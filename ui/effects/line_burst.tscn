@@ -1,0 +1,31 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="Gradient" id="Gradient_fade"]
+offsets = PackedFloat32Array(0, 0.35, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.85, 1, 1, 1, 0)
+
+[sub_resource type="Curve" id="Curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[node name="LineBurst" type="CPUParticles2D"]
+emitting = false
+amount = 90
+lifetime = 0.9
+one_shot = true
+explosiveness = 1.0
+randomness = 0.6
+lifetime_randomness = 0.4
+emission_shape = 3
+emission_rect_extents = Vector2(200, 12)
+direction = Vector2(0, -1)
+spread = 180.0
+gravity = Vector2(0, 1400)
+initial_velocity_min = 220.0
+initial_velocity_max = 900.0
+angular_velocity_min = -400.0
+angular_velocity_max = 400.0
+scale_amount_min = 5.0
+scale_amount_max = 13.0
+scale_amount_curve = SubResource("Curve_shrink")
+color_ramp = SubResource("Gradient_fade")

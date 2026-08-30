@@ -1,0 +1,111 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="Gradient" id="Gradient_bg"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.129, 0.114, 0.31, 1, 0.071, 0.063, 0.169, 1, 0.035, 0.031, 0.086, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_bg"]
+gradient = SubResource("Gradient_bg")
+width = 8
+height = 256
+fill_from = Vector2(0, 0)
+fill_to = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deco_a"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.486, 0.424, 0.941, 0.12)
+corner_radius_top_left = 56
+corner_radius_top_right = 56
+corner_radius_bottom_right = 56
+corner_radius_bottom_left = 56
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deco_b"]
+bg_color = Color(0.486, 0.424, 0.941, 0.05)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_deco_c"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.133, 0.827, 0.933, 0.1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+
+[node name="Background" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Gradient" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_bg")
+expand_mode = 1
+
+[node name="DecoLarge" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -300.0
+offset_top = -220.0
+offset_right = 340.0
+offset_bottom = 420.0
+grow_horizontal = 0
+rotation = 0.35
+pivot_offset = Vector2(320, 320)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_deco_a")
+
+[node name="DecoFilled" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -140.0
+offset_top = -420.0
+offset_right = 300.0
+offset_bottom = 20.0
+grow_vertical = 0
+rotation = -0.24
+pivot_offset = Vector2(220, 220)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_deco_b")
+
+[node name="DecoSmall" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -260.0
+offset_top = -300.0
+offset_right = 20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+rotation = 0.5
+pivot_offset = Vector2(140, 140)
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_deco_c")

@@ -1,0 +1,125 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/main_menu.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" parent="." instance=ExtResource("2_bg")]
+layout_mode = 1
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_safe")
+base_margin = 64
+
+[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="TopSpacer" type="Control" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.55
+mouse_filter = 2
+
+[node name="Header" type="VBoxContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="SafeArea/Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.945, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 88
+text = "ComplexPuzzle"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Subtitle" type="Label" parent="SafeArea/Layout/Header"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 0.85)
+theme_override_font_sizes/font_size = 34
+text = "Every piece has its place"
+horizontal_alignment = 1
+
+[node name="Best" type="Label" parent="SafeArea/Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.83, 0.32, 0.9)
+theme_override_font_sizes/font_size = 30
+text = ""
+horizontal_alignment = 1
+
+[node name="MidSpacer" type="Control" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.6
+mouse_filter = 2
+
+[node name="MenuCenter" type="CenterContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Menu" type="VBoxContainer" parent="SafeArea/Layout/MenuCenter"]
+custom_minimum_size = Vector2(680, 0)
+layout_mode = 2
+theme_override_constants/separation = 28
+
+[node name="NewGameButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "New Game"
+
+[node name="LeaderboardButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Leaderboard"
+
+[node name="SettingsButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Settings"
+
+[node name="AboutButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "About"
+
+[node name="ExitButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Exit"
+
+[node name="BottomSpacer" type="Control" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Version" type="Label" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 0.7)
+theme_override_font_sizes/font_size = 28
+text = "v0.1.0"
+horizontal_alignment = 1

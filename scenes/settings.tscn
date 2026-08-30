@@ -1,0 +1,80 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/menu_screen.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
+
+[node name="Settings" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Background" parent="." instance=ExtResource("2_bg")]
+layout_mode = 1
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_safe")
+base_margin = 64
+
+[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 36
+
+[node name="BackRow" type="HBoxContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BackButton" type="Button" parent="SafeArea/Layout/BackRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 38
+text = "‹  Back"
+
+[node name="Title" type="Label" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.945, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 72
+text = "Settings"
+
+[node name="Panel" type="PanelContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Body" type="VBoxContainer" parent="SafeArea/Layout/Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Heading" type="Label" parent="SafeArea/Layout/Panel/Body"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 0.9)
+theme_override_font_sizes/font_size = 34
+text = "NOTHING TO CONFIGURE YET"
+
+[node name="Note" type="Label" parent="SafeArea/Layout/Panel/Body"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 36
+text = "Audio, haptics and difficulty options will land here alongside the puzzle itself."
+autowrap_mode = 2
+
+[node name="Spacer" type="Control" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2

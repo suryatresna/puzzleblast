@@ -1,0 +1,16 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Platform export output
+/build/
+*.ipa
+*.apk
+*.aab
+
+# iOS export artifacts, if exported into the project root rather than /build
+/puzzle.xcodeproj/
+/puzzle/
+/puzzle.pck
+/*.xcframework/
+/PrivacyInfo.xcprivacy

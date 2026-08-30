@@ -1,0 +1,391 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scenes/game.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
+[ext_resource type="Script" path="res://scripts/board.gd" id="4_board"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="5_fx"]
+[ext_resource type="Script" path="res://scripts/piece_view.gd" id="6_piece"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
+content_margin_left = 26.0
+content_margin_top = 14.0
+content_margin_right = 26.0
+content_margin_bottom = 14.0
+bg_color = Color(0.11, 0.098, 0.243, 0.66)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.486, 0.424, 0.941, 0.26)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
+bg_color = Color(0.08, 0.07, 0.18, 0.5)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.486, 0.424, 0.941, 0.18)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[node name="Game" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Background" parent="." instance=ExtResource("2_bg")]
+layout_mode = 1
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_safe")
+base_margin = 32
+
+[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 22
+
+[node name="TopBar" type="HBoxContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="PauseButton" type="Button" parent="SafeArea/Layout/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 34
+text = "❚❚"
+
+[node name="Stats" type="HBoxContainer" parent="SafeArea/Layout/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ScoreBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/ScoreBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/ScoreBox/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 24
+text = "SCORE"
+horizontal_alignment = 1
+
+[node name="ScoreValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/ScoreBox/V"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 46
+text = "0"
+horizontal_alignment = 1
+
+[node name="BestBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/BestBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/BestBox/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 24
+text = "BEST"
+horizontal_alignment = 1
+
+[node name="BestValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/BestBox/V"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "0"
+horizontal_alignment = 1
+
+[node name="ComboBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/ComboBox"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/ComboBox/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 24
+text = "COMBO"
+horizontal_alignment = 1
+
+[node name="ComboValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/ComboBox/V"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "x1"
+horizontal_alignment = 1
+
+
+[node name="BoardArea" type="AspectRatioContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+ratio = 1.0
+stretch_mode = 2
+
+[node name="Board" type="Control" parent="SafeArea/Layout/BoardArea"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("4_board")
+
+[node name="Effects" type="Node2D" parent="SafeArea/Layout/BoardArea/Board"]
+unique_name_in_owner = true
+script = ExtResource("5_fx")
+
+
+[node name="Tray" type="HBoxContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Slot0" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot0"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Slot1" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot1"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Slot2" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot2"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Slot3" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot3"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Slot4" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot4"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Hint" type="Label" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 0.65)
+theme_override_font_sizes/font_size = 26
+text = "drag a card onto the board  ·  fill a row or column to clear it"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PausePanel" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="PausePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.018, 0.055, 0.82)
+
+[node name="Center" type="CenterContainer" parent="PausePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Box" type="VBoxContainer" parent="PausePanel/Center"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+theme_override_constants/separation = 26
+
+[node name="Title" type="Label" parent="PausePanel/Center/Box"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 76
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="PausePanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="PausePanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Restart"
+
+[node name="QuitButton" type="Button" parent="PausePanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Main Menu"
+
+[node name="GameOverPanel" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="GameOverPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.018, 0.055, 0.86)
+
+[node name="Center" type="CenterContainer" parent="GameOverPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Box" type="VBoxContainer" parent="GameOverPanel/Center"]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="GameOverPanel/Center/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.984, 0.443, 0.522, 1)
+theme_override_font_sizes/font_size = 72
+text = "No Moves Left"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="FinalScore" type="Label" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "0"
+horizontal_alignment = 1
+
+[node name="FinalBest" type="Label" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 34
+text = "best  0"
+horizontal_alignment = 1
+
+[node name="RankLabel" type="Label" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.83, 0.32, 1)
+theme_override_font_sizes/font_size = 38
+text = ""
+horizontal_alignment = 1
+
+[node name="Gap" type="Control" parent="GameOverPanel/Center/Box"]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+
+[node name="RetryButton" type="Button" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Play Again"
+
+[node name="ScoresButton" type="Button" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Leaderboard"
+
+[node name="MenuButton" type="Button" parent="GameOverPanel/Center/Box"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Main Menu"
+
+[node name="OverlayEffects" type="Node2D" parent="."]
+unique_name_in_owner = true
+script = ExtResource("5_fx")
+
+[node name="DragView" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+mouse_filter = 2
+script = ExtResource("6_piece")
