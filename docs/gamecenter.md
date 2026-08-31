@@ -119,15 +119,16 @@ fails silently on Apple's side, which is the single most common cause of
 
 | Mode | Leaderboard ID | Suggested name | Sort |
 |---|---|---|---|
-| Palette | `pixelblast.palette` | Palette — Endless | High to low |
-| Sprint | `pixelblast.sprint` | Sprint — 60 Seconds | High to low |
-| Puzzle | `pixelblast.puzzle` | Puzzle | High to low |
+| Palette | `com.suryatresna.pixelblast.palette` | Palette — Endless | High to low |
+| Sprint | `com.suryatresna.pixelblast.sprint` | Sprint — 60 Seconds | High to low |
+| Puzzle | `com.suryatresna.pixelblast.puzzle` | Puzzle | High to low |
 
 Score format: **Integer**. Scores are submitted raw, with no multiplier.
 
-If you would rather use reverse-DNS ids (`com.yourteam.pixelblast.palette`),
-change the constants in `scripts/game_services.gd` — that table is the only
-place they appear.
+These are reverse-DNS on the bundle id, Apple's convention: ids are unique
+across the whole developer account, not per app. **They cannot be renamed after
+creation** — changing one later means a new board and the old scores are
+stranded. `GameServices.LEADERBOARDS` is the only place they appear.
 
 ## The plugin needs a patch for Godot 4.7
 

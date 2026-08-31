@@ -20,10 +20,14 @@ const SINGLETON := "GameCenter"
 
 ## Leaderboard IDs, one per mode. These must match the identifiers created in
 ## App Store Connect exactly -- a mismatch fails silently on Apple's side.
+##
+## Reverse-DNS on the bundle id, which is Apple's convention: leaderboard ids
+## are unique across the whole account rather than per app, and they cannot be
+## renamed once created -- a new id means starting the board's scores over.
 const LEADERBOARDS := {
-	ModesScript.Id.PALETTE: "pixelblast.palette",
-	ModesScript.Id.SPRINT: "pixelblast.sprint",
-	ModesScript.Id.PUZZLE: "pixelblast.puzzle",
+	ModesScript.Id.PALETTE: "com.suryatresna.pixelblast.palette",
+	ModesScript.Id.SPRINT: "com.suryatresna.pixelblast.sprint",
+	ModesScript.Id.PUZZLE: "com.suryatresna.pixelblast.puzzle",
 }
 
 ## Sign-in cannot be requested from `_ready()`. The plugin needs the app's
