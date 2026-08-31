@@ -106,6 +106,28 @@ func reset() -> void:
 	queue_redraw()
 
 
+## Seeds the grid with a starting layout, as {Vector2i: colour index}. Puzzle
+## mode uses this; the caller is responsible for the layout being legal (no
+## row or column already full, or it clears the moment it is drawn).
+func preset(cells: Dictionary) -> void:
+	reset()
+	for key: Vector2i in cells:
+		if key.x < 0 or key.x >= SIZE or key.y < 0 or key.y >= SIZE:
+			continue
+		_grid[key.y][key.x] = int(cells[key])
+	queue_redraw()
+
+
+## How many cells are occupied. Puzzle mode reports progress with it.
+func filled_count() -> int:
+	var n := 0
+	for y in SIZE:
+		for x in SIZE:
+			if _grid[y][x] != EMPTY:
+				n += 1
+	return n
+
+
 func cell_size() -> float:
 	var c := size.x / float(SIZE)
 	# A pixel theme needs whole-pixel cells or every tile is resampled and the

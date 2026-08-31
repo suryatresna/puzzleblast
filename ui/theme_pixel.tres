@@ -120,7 +120,43 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_x6e2f"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x6e2f"]
+content_margin_left = 40.0
+content_margin_top = 34.0
+content_margin_right = 40.0
+content_margin_bottom = 34.0
+bg_color = Color(0.9764706, 0.94509804, 0.88235295, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
+shadow_offset = Vector2(0, 16)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pspgu"]
+content_margin_left = 40.0
+content_margin_top = 34.0
+content_margin_right = 40.0
+content_margin_bottom = 34.0
+bg_color = Color(0.7137255, 0.79607844, 0.7647059, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
+shadow_offset = Vector2(0, 16)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_dh5n7"]
 content_margin_left = 40.0
 content_margin_top = 22.0
 content_margin_right = 40.0
@@ -132,7 +168,7 @@ texture_margin_right = 48.0
 texture_margin_bottom = 48.0
 modulate_color = Color(0.9764706, 0.94509804, 0.88235295, 1)
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_pspgu"]
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_e0lbv"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
@@ -187,14 +223,18 @@ IconButton/styles/normal = SubResource("StyleBoxFlat_1lu3f")
 IconButton/styles/pressed = SubResource("StyleBoxFlat_1lu3f")
 Label/colors/font_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
 Label/font_sizes/font_size = 40
+ModeCard/base_type = &"PanelContainer"
+ModeCard/styles/panel = SubResource("StyleBoxFlat_x6e2f")
+ModeCardFeatured/base_type = &"PanelContainer"
+ModeCardFeatured/styles/panel = SubResource("StyleBoxFlat_pspgu")
 MutedLabel/base_type = &"Label"
 MutedLabel/colors/font_color = Color(0.41960785, 0.3372549, 0.21960784, 1)
-Panel/styles/panel = SubResource("StyleBoxTexture_x6e2f")
-PanelContainer/styles/panel = SubResource("StyleBoxTexture_x6e2f")
+Panel/styles/panel = SubResource("StyleBoxTexture_dh5n7")
+PanelContainer/styles/panel = SubResource("StyleBoxTexture_dh5n7")
 RichTextLabel/colors/default_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
 RichTextLabel/font_sizes/normal_font_size = 38
 SlotPanel/base_type = &"PanelContainer"
-SlotPanel/styles/panel = SubResource("StyleBoxTexture_pspgu")
+SlotPanel/styles/panel = SubResource("StyleBoxTexture_e0lbv")
 TitleLabel/base_type = &"Label"
 TitleLabel/colors/font_color = Color(0.2901961, 0.23137255, 0.16470589, 1)
 WordmarkLabel/base_type = &"Label"

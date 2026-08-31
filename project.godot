@@ -26,6 +26,8 @@ Scores="*res://scripts/scores.gd"
 Difficulty="*res://scripts/difficulty.gd"
 Themes="*res://scripts/themes.gd"
 Audio="*res://scripts/audio.gd"
+Modes="*res://scripts/modes.gd"
+GameServices="*res://scripts/game_services.gd"
 
 [display]
 

@@ -89,9 +89,11 @@ Frames are named `f00000000.png`. The game auto-pauses on focus loss (see `_noti
 ### Autoloads
 
 - **`App`** (`scripts/app.gd`) — a `CanvasLayer` at layer 128 owning scene routing and the fade overlay. Always navigate with `App.goto_scene(App.SCENE_*)`; it drops re-entrant calls so a double-tap cannot load two scenes. Also exposes `game_name` / `game_version` read from project settings.
-- **`Scores`** (`scripts/scores.gd`) — the local leaderboard, top 10, persisted to `user://scores.cfg`. Single source of truth for the best score; nothing else should write a save file.
+- **`Scores`** (`scripts/scores.gd`) — the local leaderboard, persisted to `user://scores.cfg`. Top 10 **per mode**, so filtering never leaves a mode with one row, and `submit()` returns the rank within that mode. `best()` is the overall best (the menu); `best(mode)` is per-mode (the HUD) — a Sprint score and an endless run are not comparable. Rows written before modes existed carry a difficulty `level` and no mode; they migrate to Palette on load. Single source of truth for the best score; nothing else should write a save file.
 - **`Themes`** (`scripts/themes.gd`) — the theme registry. See **Theming** below.
-- **`Audio`** (`scripts/audio.gd`) — a shuffled music playlist and sound effects. Two beds, picked per screen by `App._playlist_for()`: a fixed menu rotation (4 plays per track) and a shuffled in-game list (5 plays per track). Tracks are scanned from `audio/music/` at runtime and named in `snake_case`; `game_over` is held back and played when a run ends. Effect streams are cached, music streams are not — the library is tens of megabytes and only one track plays at a time. Owns the `[audio]` section of `user://settings.cfg`. Effects resolve by name against `.wav`/`.ogg`/`.mp3`, so assets can be replaced without code changes — see `audio/README.md`. It starts its own music in `_ready()` rather than being started by `App`, because autoloads run in declaration order and `App` is first.
+- **`Modes`** (`scripts/modes.gd`) — game modes. `PALETTE` is the endless game the project has always had; `SPRINT` runs a 60-second fuse; `PUZZLE` deals a seeded starting board with a lines-to-clear objective. `current` must be set **before** routing to the play screen — `game.gd` reads it once in `_setup_mode()`, which `_restart()` calls. Owns the `[modes]` section of `user://settings.cfg`.
+- **`GameServices`** (`scripts/game_services.gd`) — Apple Game Center: authenticate on launch, greet the signed-in player on the welcome page, submit every finished run, open Apple's leaderboard UI. Godot 4 has **no built-in Game Center module** (it moved out of the engine after 3.x), so this binds at runtime to the `GameCenter` singleton from godot-ios-plugins. Guarded twice — iOS *and* singleton present — so it is a silent no-op in the editor, on desktop, on Android, and on an iOS build without the plugin. The local `Scores` table stays the source of truth; nothing may depend on Game Center succeeding. Setup that cannot be done from this repo is in `docs/gamecenter.md`.
+- **`Audio`** (`scripts/audio.gd`) — a shuffled music playlist and sound effects. Two beds, picked per screen by `App._playlist_for()`: a fixed menu rotation (4 plays per track) and a shuffled in-game list (5 plays per track). Tracks are scanned from `assets/audio/music/` at runtime and named in `snake_case`; `game_over` is held back and played when a run ends. Effect streams are cached, music streams are not — the library is tens of megabytes and only one track plays at a time. Owns the `[audio]` section of `user://settings.cfg`. Effects resolve by name against `.wav`/`.ogg`/`.mp3`, so assets can be replaced without code changes — see `assets/audio/README.md`. It starts its own music in `_ready()` rather than being started by `App`, because autoloads run in declaration order and `App` is first.
 
 ### Game separation of concerns
 
@@ -149,7 +151,7 @@ python3 tools/gen_pixel_sprites.py                       # ui/pixel/*.png
 
 `gen_pixel_themes` reads its colours from `Themes.DEFS`, and also injects the type variations into the hand-maintained `ui/theme.tres`.
 
-**Branding.** The title mark is the design's nine tiles laid out six across, drawn at runtime by `scripts/logo_mark.gd` from the live block sprite so it follows the palette rather than being a flat image. It appears on both `splash` and `main_menu`. The wordmark is the game name stacked one word per line via `App.game_wordmark()` — derived from the project name, so a rename carries through — styled by the `WordmarkLabel` variation (accent colour plus the design's hard 12px offset shadow). The boot splash and app icon are baked from the same layout by `tools/gen_branding.py`; because Godot needs files on disk for those, they are pinned to the shipped palette and must be regenerated if `Themes.ACTIVE` changes.
+**Branding.** The title mark is the design's nine tiles laid out six across, drawn at runtime by `scripts/logo_mark.gd` from the live block sprite so it follows the palette rather than being a flat image. It appears on both `splash` and `main_menu`. The wordmark is the game name stacked one word per line via `App.game_wordmark()` — derived from the project name, so a rename carries through — styled by the `WordmarkLabel` variation (accent colour plus the design's hard 12px offset shadow). The boot splash and app icons are baked from the same layout by `tools/gen_branding.py` and pinned to the shipped palette (`Themes.ACTIVE`), so regenerate after changing it. Icons: `assets/icons/icon_1024.png` for the App Store — **RGB with no alpha channel**, which Apple requires and which the iOS preset's `icons/icon_1024x1024` slot points at — and `assets/icons/icon_512.png` for Google Play (RGBA). `ui/icon.png` is the same 512 image, and is what `config/icon` uses for the editor and desktop window. Each size draws the tile at `side // 8` (128 and 64), both whole multiples of the 32px logical tile, so the pixel grid stays exact instead of being resampled.
 
 **Surfaces are two-stop gradients.** Every panel, button and backdrop in the design is a vertical `linear-gradient(180deg, top, bottom)`. Rather than store both stops, the nine-patch sprite carries the *ramp* and the theme names only the **top** colour — tinting reproduces the bottom stop. The ramp differs per mode (light panels fall to ~0.90 of the top, dark ones to ~0.62), which is why `panel.png` and `panel_dark.png` are separate sprites. `bg_stops` likewise stores just the design's two endpoints; `background.gd` samples that ramp at each gradient point's own offset, so a 2-stop theme and a 3-stop one both work.
 
@@ -158,6 +160,18 @@ python3 tools/gen_pixel_sprites.py                       # ui/pixel/*.png
 Watch the token names: `#241C16` is the dark **panel**, but the dark **board** is a step darker at `#201914`. The board also carries an ink frame outside the grid (`board_border`), which is the design's `box-shadow: 0 0 0 4px` — 4px at the mockup's 2x, so 2 logical px, 8 in our space.
 
 **Pixel geometry.** The design is 270×480 with 32px tiles; the game runs at 1080×1920, exactly 4×. Sprites are therefore generated pre-upscaled (a 32px tile is stored at 128px) rather than relying on filtering — `StyleBoxTexture` nine-patch margins are measured in texture pixels and are *not* scaled when drawn, so a 48px plate with a 12px margin would render tiny corners. `base_margin = 28` on the game screen gives a 1024px board and exactly 128px cells. Under a pixel theme `cell_size()` floors, `grid_origin()` centres the remainder, and `shake_offset` rounds to whole pixels.
+
+### Game modes
+
+Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
+
+- **Palette** — the original endless run. Nothing is added.
+- **Sprint** — `scripts/fuse_bar.gd` counts 60 seconds down as a burning fuse; when it empties it calls `_board.declare_game_over()` rather than ending the run itself, so every end-of-run path stays in one place.
+- **Puzzle** — `Modes.puzzle_layout(level)` returns a starting board, seeded from the level so board N is always identical. Two invariants it must keep: no row or column may start full (it would clear the instant it is drawn), and the board must leave room for the opening deal. The objective is lines-cleared, tracked in `game.gd._puzzle_cleared`.
+
+**The design says "120 hand-built boards"; these are generated, not authored.** Replacing `puzzle_layout()` with real layouts is the only change that would need.
+
+The design's fourth mode (Daily) and the `TILE SET` row are not built — Daily is gated on a level system that does not exist, and the tile set is fixed by `Themes.ACTIVE`.
 
 ### Layout conventions
 
@@ -173,9 +187,12 @@ Two layout traps seen in this repo:
 
 ## Known gaps
 
-- `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. The design's RESTORE PURCHASES is not built — there is no IAP.
-- Effects are still placeholders from `tools/gen_audio.py`; music is real. Confetti is silent.
-- `audio/music/theme.wav` and `audio/sfx/game_over.wav` are superseded and unreferenced.
-- Looping WAVs need `edit/loop_mode=1` in their `.import`. Setting `loop_mode` at runtime without also setting `loop_end` yields a zero-length loop: `playing` stays true, the position never advances, and the track is silent. `--headless` and Movie Maker both use the Dummy audio driver, so audio bugs only surface in a real windowed run.
+- Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
+- The leaderboard tags every row with its mode and filters by it; difficulty level is no longer recorded or shown anywhere.
+- `scenes/modes.tscn` covers Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
+- `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. Difficulty is deliberately absent — it follows the score during a run, so there is nothing to set. The design's RESTORE PURCHASES is not built — there is no IAP.
+- Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.
+- `assets/audio/music/theme.wav` and `assets/audio/sfx/game_over.wav` are superseded and unreferenced.
+- Music files must **not** loop — the playlist advances on `finished`, so a looping track would never hand over. `Audio._set_loop` clears the flag on every track it plays. If you ever do need a looping WAV, setting `loop_mode` without also setting `loop_end` yields a zero-length loop: `playing` stays true, the position never advances, and the track is silent. `--headless` and Movie Maker both use the Dummy audio driver, so audio bugs only surface in a real windowed run.
 - The leaderboard is local-only; there is no backend or platform integration.
 - No export presets are configured. Note that Godot 4.7.2's iOS **simulator** slice is x86_64-only while Xcode 26 simulators are arm64-only, so the simulator cannot run this on Apple Silicon — use a physical device or the macOS build.

@@ -135,6 +135,28 @@ func _panels(t: Theme, id: int) -> void:
 	t.set_type_variation("CardPanel", "PanelContainer")
 	t.set_stylebox("panel", "CardPanel", card)
 
+	# Mode cards: the design's hard border plus an 8px lip beneath, which is a
+	# zero-blur offset shadow rather than a real one.
+	for variation: String in ["ModeCard", "ModeCardFeatured"]:
+		var card_bg: Color = d.get("chip_top", Color(1, 1, 1, 0.06))
+		if variation == "ModeCardFeatured":
+			card_bg = d.get("blocks", [Color.WHITE])[0]     # the palette blue
+		var mc := StyleBoxFlat.new()
+		mc.bg_color = card_bg
+		mc.border_color = d.get("ink", Color(0.486, 0.424, 0.941, 0.26))
+		mc.set_border_width_all(6 if pixel else 2)
+		mc.set_corner_radius_all(8 if pixel else 22)
+		mc.content_margin_left = 40.0
+		mc.content_margin_right = 40.0
+		mc.content_margin_top = 34.0
+		mc.content_margin_bottom = 34.0
+		if pixel:
+			mc.shadow_color = d.get("ink", Color.BLACK)
+			mc.shadow_size = 0
+			mc.shadow_offset = Vector2(0, 16)
+		t.set_type_variation(variation, "PanelContainer")
+		t.set_stylebox("panel", variation, mc)
+
 	# The square back button in the design's header.
 	var icon := card.duplicate() as StyleBoxFlat
 	icon.content_margin_left = 22.0

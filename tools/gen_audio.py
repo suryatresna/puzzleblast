@@ -2,7 +2,7 @@
 """Generate placeholder audio for Pixel Blast.
 
 These are deliberately simple chiptune-style WAVs that suit the pixel theme
-and are meant to be REPLACED -- see audio/README.md. Keeping them generated
+and are meant to be REPLACED -- see assets/audio/README.md. Keeping them generated
 means the repo has working audio without shipping licensed assets, and the
 file names double as the contract the game codes against.
 
@@ -11,7 +11,7 @@ Run:  python3 tools/gen_audio.py
 import math, os, struct, wave
 
 RATE = 22050
-OUT = os.path.join(os.path.dirname(__file__), "..", "audio")
+OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "audio")
 
 # A minor pentatonic scale reads as "game music" without needing chords.
 def note(n):
@@ -140,4 +140,4 @@ if __name__ == "__main__":
     # run end
     write("sfx/game_over.wav", blip([69, 65, 62, 57], 0.20, wave_fn=tri, release=0.8), 0.50)
     write("music/theme.wav",   music(), 0.55)
-    print("done -> audio/")
+    print("done -> assets/audio/")

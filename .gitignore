@@ -8,16 +8,29 @@
 *.apk
 *.aab
 
-# iOS export artifacts, if exported into the project root rather than /build
+# iOS export artifacts, if exported into the project root
 /puzzle.xcodeproj/
 /puzzle/
 /puzzle.pck
 /*.xcframework/
 /PrivacyInfo.xcprivacy
 
-# Xcode export output. This lands in the project tree and reaches ~800MB
-# (DerivedData, MoltenVK static libs, the .pck) -- never commit it.
-/ios/
+# The iOS export target (export_path = ios/pixblast.ipa). This reaches ~600MB
+# -- the .ipa, .pck, xcarchive, MoltenVK and the generated Xcode project --
+# and must never be committed.
+#
+# Excluded by CONTENTS (/ios/*), not as a directory (/ios/): git cannot
+# re-include anything inside an excluded directory, so `/ios/` would make the
+# Game Center plugin untrackable no matter what follows. The plugin has to
+# live exactly here -- Godot hardcodes res://<platform>/plugins -- so it is
+# the one thing exempted. See docs/gamecenter.md.
+/ios/*
+!/ios/plugins/
+
+# Xcode's own export report, dropped in the project root by an iOS export.
+DistributionSummary.plist
+ExportOptions.plist
+Packaging.log
 
 # Editor/agent tooling metadata
 .serena/

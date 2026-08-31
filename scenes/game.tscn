@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://b52ysk86xobx7" path="res://scripts/effects.gd" id="5_fx"]
 [ext_resource type="Script" uid="uid://3p5h12mv8h6x" path="res://scripts/piece_view.gd" id="6_piece"]
 [ext_resource type="Script" uid="uid://cc6yn4r3ql0in" path="res://scripts/score_counter.gd" id="7_counter"]
+[ext_resource type="Script" path="res://scripts/fuse_bar.gd" id="9_fuse"]
 
 [node name="Game" type="Control" unique_id=250239038]
 layout_mode = 3
@@ -129,6 +130,20 @@ theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 30
 text = "best 0"
 horizontal_alignment = 1
+
+[node name="Objective" type="Label" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"AccentLabel"
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+text = ""
+
+[node name="FuseBar" type="Control" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("9_fuse")
 
 [node name="BoardArea" type="AspectRatioContainer" parent="SafeArea/Layout" unique_id=1747627127]
 layout_mode = 2

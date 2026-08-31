@@ -49,6 +49,12 @@ mouse_filter = 2
 theme_override_font_sizes/font_size = 72
 text = "Leaderboard"
 
+[node name="Filters" type="HBoxContainer" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
 [node name="Scroll" type="ScrollContainer" parent="SafeArea/Layout"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -74,6 +80,12 @@ text = "No games finished yet.
 Play a round and your score lands here."
 horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="GameCenterButton" type="Button" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Game Center"
 
 [node name="ClearButton" type="Button" parent="SafeArea/Layout"]
 unique_name_in_owner = true

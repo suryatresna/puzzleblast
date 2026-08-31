@@ -56,6 +56,8 @@ var _shake := 0.0
 var _best_at_start := 0
 var _beat_best := false
 var _deal_tweens: Array = []
+## Lines cleared this run; Puzzle mode scores its objective against it.
+var _puzzle_cleared := 0
 var _combo_power_given := false
 var _last_combo := 0
 var _aura_tween: Tween
@@ -88,6 +90,7 @@ func _ready() -> void:
 	%PausePanel.hide()
 	%GameOverPanel.hide()
 	_drag_view.hide()
+	%FuseBar.finished.connect(_on_time_up)
 
 	_restart()
 
@@ -461,6 +464,13 @@ func _on_piece_placed(cells: Array, color_index: int) -> void:
 
 
 func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) -> void:
+	_puzzle_cleared += rows.size() + cols.size()
+	_sync_objective()
+	if _puzzle_solved():
+		# Let the clear animation read before the panel drops.
+		get_tree().create_timer(0.6).timeout.connect(func() -> void:
+			if _board.alive:
+				_board.declare_game_over())
 	# Combo raises the pitch so a streak reads as one rising phrase.
 	var step: int = clampi(_board.combo - 1, 0, 4)
 	if _board.combo >= 2:
@@ -551,15 +561,36 @@ func _on_piece_fitted(cells: Array, color_index: int) -> void:
 func _on_game_over() -> void:
 	# The GameOver track replaces the bed for the whole end-of-run panel; a
 	# one-shot effect on top of it would just muddy the jingle.
-	Audio.play_game_over()
+	%FuseBar.stop()
+	var solved := _puzzle_solved()
+	if solved:
+		Modes.mark_solved(Modes.puzzle_level)
+		if Modes.puzzle_level < Modes.PUZZLE_COUNT:
+			Modes.puzzle_level += 1
+	# A solved board gets the victory jingle; everything else gets the loss one.
+	if solved:
+		Audio.play_stinger("victory")
+	else:
+		Audio.play_game_over()
 	Haptics.stop()               # nothing should still be buzzing on game over
-	var rank: int = Scores.submit(_board.score, _board.lines, Difficulty.peak_name())
-	_board.best = Scores.best()
+	var rank: int = Scores.submit(_board.score, _board.lines, Modes.current)
+	# Game Center gets every finished run. The call is a no-op off iOS, and
+	# queues if sign-in has not landed yet, so the local table stays the
+	# source of truth either way.
+	GameServices.submit_score(_board.score, Modes.current)
+	_board.best = Scores.best(Modes.current)
 	if rank == 1:
 		_overlay.celebrate(get_viewport_rect().size)
 	%FinalScore.text = str(_board.score)
 	%FinalBest.text = "%d lines cleared" % _board.lines
 	%RankLabel.text = _rank_text(rank)
+	var title: Label = %GameOverPanel/Center/Box/Title
+	if solved:
+		title.text = "BOARD\nSOLVED"
+	elif Modes.current == Modes.Id.SPRINT:
+		title.text = "TIME\nUP"
+	else:
+		title.text = "NO ROOM\nLEFT"
 	%GameOverPanel.show()
 	%RetryButton.grab_focus()
 
@@ -569,7 +600,7 @@ func _rank_text(rank: int) -> String:
 		return "NEW BEST"
 	if rank > 0:
 		return "#%d on the leaderboard" % rank
-	return "best  %d" % Scores.best()
+	return "best  %d" % Scores.best(Modes.current)
 
 
 func _notification(what: int) -> void:
@@ -634,16 +665,63 @@ func _restart() -> void:
 	Difficulty.reset()
 	_background.tint_to(Color.WHITE, 0.0, 0.2)
 	_shake = 0.0
-	_best_at_start = Scores.best()
+	_best_at_start = Scores.best(Modes.current)
 	_beat_best = false
 	_combo_power_given = false
 	_last_combo = 0
 	%ScoreValue.reset_to(0)
 	_board.reset()
-	_board.best = Scores.best()
+	_setup_mode()
+	_board.best = Scores.best(Modes.current)
 	_refill_tray()
 
 
 func _leave() -> void:
 	Haptics.stop()
 	App.goto_scene(App.SCENE_MAIN_MENU)
+
+
+# --- game modes --------------------------------------------------------------
+
+## Applies the mode chosen on the picker. Called once per run, after the board
+## and HUD exist but before the first deal, so a preset board is in place when
+## the opening hand is checked for a legal move.
+func _setup_mode() -> void:
+	_puzzle_cleared = 0
+	%FuseBar.stop()
+	match Modes.current:
+		Modes.Id.SPRINT:
+			%FuseBar.show()
+			%FuseBar.start(Modes.SPRINT_SECONDS)
+			%Objective.show()
+			%Objective.text = "SPRINT  ·  SCORE WHAT YOU CAN"
+		Modes.Id.PUZZLE:
+			%FuseBar.hide()
+			_board.preset(Modes.puzzle_layout(Modes.puzzle_level))
+			%Objective.show()
+			_sync_objective()
+		_:
+			%FuseBar.hide()
+			%Objective.hide()
+
+
+func _sync_objective() -> void:
+	if Modes.current != Modes.Id.PUZZLE:
+		return
+	var target := Modes.puzzle_target(Modes.puzzle_level)
+	%Objective.text = "BOARD %d  ·  CLEAR %d LINES  ·  %d/%d" % [
+		Modes.puzzle_level, target, mini(_puzzle_cleared, target), target,
+	]
+
+
+## Sprint ran out. The board decides the run is over so every end-of-run path
+## stays in one place.
+func _on_time_up() -> void:
+	if _board.alive:
+		_board.declare_game_over()
+
+
+## True when a Puzzle board has met its objective.
+func _puzzle_solved() -> bool:
+	return Modes.current == Modes.Id.PUZZLE \
+		and _puzzle_cleared >= Modes.puzzle_target(Modes.puzzle_level)

@@ -70,6 +70,16 @@ expand_mode = 1
 stretch_mode = 5
 script = ExtResource("4_mark")
 
+[node name="Greeting" type="Label" parent="SafeArea/Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"AccentLabel"
+theme_override_font_sizes/font_size = 30
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="Best" type="Label" parent="SafeArea/Layout/Header"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -98,6 +108,11 @@ theme_override_constants/separation = 28
 unique_name_in_owner = true
 layout_mode = 2
 text = "New Game"
+
+[node name="ModesButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Modes"
 
 [node name="LeaderboardButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
 unique_name_in_owner = true

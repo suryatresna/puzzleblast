@@ -1,17 +1,16 @@
 extends "res://scripts/menu_screen.gd"
 ## Settings, laid out as the design's card rows.
 ##
-## Three row shapes, all from the mockups:
+## Two row shapes, both from the mockups:
 ##   * a switch row  -- label on the left, sliding toggle on the right
 ##   * a slider row  -- label above a row of discrete segments
-##   * a note card   -- read-only copy
 ##
 ## The theme is deliberately absent: it is a build-time choice (see
 ## `Themes.ACTIVE`), not a user setting.
 ##
-## Difficulty is not listed as an option on purpose: it follows the score
-## during a run rather than being chosen up front. It is shown as a read-only
-## card so the ramp still reads as design rather than bad luck.
+## Difficulty is not listed here: it follows the score during a run rather
+## than being chosen, so there is nothing to set and nothing worth explaining
+## on a settings screen.
 
 const Haptics := preload("res://scripts/haptics.gd")
 const ToggleSwitch := preload("res://scripts/toggle_switch.gd")
@@ -20,7 +19,6 @@ const SegmentSlider := preload("res://scripts/segment_slider.gd")
 ## Label sizes are the design's, doubled twice: the mockups are 2x of the
 ## 270x480 screen and the game runs at 4x.
 const ROW_FONT := 30
-const NOTE_FONT := 26
 
 var _rows: Dictionary = {}
 
@@ -50,8 +48,6 @@ func _build_rows() -> void:
 	_rows["grid"] = _switch_row("GRID LINES", Themes.grid_lines(),
 		func(on: bool) -> void: Themes.set_grid_lines(on))
 	_rows["haptics"] = _switch_row("HAPTICS", Haptics.is_enabled(), _set_haptics)
-	_rows["difficulty"] = _note_row("DIFFICULTY  ·  FOLLOWS YOUR SCORE",
-		_difficulty_summary())
 
 
 ## A card with a label and a control on the right.
@@ -115,26 +111,6 @@ func _slider_row(label: String, start: float, changed: Callable) -> Dictionary:
 	return {"card": card, "slider": slider}
 
 
-func _note_row(title: String, body: String) -> Dictionary:
-	var card := PanelContainer.new()
-	card.theme_type_variation = &"CardPanel"
-	%Rows.add_child(card)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 14)
-	card.add_child(col)
-	var head := Label.new()
-	head.text = title
-	head.add_theme_font_size_override("font_size", NOTE_FONT)
-	head.theme_type_variation = &"AccentLabel"
-	col.add_child(head)
-	var note := Label.new()
-	note.text = body
-	note.add_theme_font_size_override("font_size", NOTE_FONT)
-	note.theme_type_variation = &"MutedLabel"
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(note)
-	return {"card": card}
-
 
 func _sync() -> void:
 	(_rows["music"]["switch"] as BaseButton).set_pressed_no_signal(Audio.music_on)
@@ -158,14 +134,3 @@ func _set_haptics(on: bool) -> void:
 	Haptics.set_enabled(on)
 	if on:
 		Haptics.place()          # a sample of what was just switched on
-
-
-## Spells out the ramp so the tightening deal reads as design, not bad luck.
-func _difficulty_summary() -> String:
-	var lines: Array[String] = []
-	for level: int in Difficulty.BANDS:
-		var from: int = Difficulty.threshold_of(level)
-		var head: String = "from 0" if from == 0 else "from %d points" % from
-		lines.append("%s  (%s)\n    %s"
-			% [Difficulty.name_of(level), head, Difficulty.blurb_of(level)])
-	return "\n".join(lines)

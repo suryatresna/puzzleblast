@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
-"""Generate the boot splash and app icon from the title mark.
+"""Generate the boot splash and app icons from the title mark.
 
 The mark is the design's nine tiles laid out six across; the same layout the
 game draws at runtime in `scripts/logo_mark.gd`. These are baked images rather
 than runtime draws because Godot needs a file for `boot_splash/image` and
 `config/icon`, so they are pinned to the SHIPPED palette (Themes.ACTIVE =
 PIXEL_DARK). Re-run after changing that.
+
+Icon sizes:
+  * 1024 -- App Store. Saved as RGB with **no alpha channel**: Apple rejects
+    icons that carry one, even when it is fully opaque.
+  * 512  -- Google Play, and the Godot project icon. 32-bit RGBA.
+
+The tile is drawn at `side // 8`, so 128px at 1024 and 64px at 512. Both are
+whole multiples of the 32px logical tile the art was authored at, which keeps
+the pixel grid exact at either size rather than resampling it.
 
 Run:  python3 tools/gen_branding.py
 """
@@ -57,11 +66,22 @@ def mark(cell):
     return out
 
 
+def build_icon(side):
+    """Square icon: the mark centred on the theme's base colour."""
+    cell = side // 8              # 128 at 1024, 64 at 512 -- both 32*n
+    m = mark(cell)
+    icon = Image.new("RGBA", (side, side), hx(BG) + (255,))
+    icon.alpha_composite(m, ((side - m.width) // 2, (side - m.height) // 2))
+    return icon
+
+
 def save(img, name):
     path = os.path.abspath(os.path.join(OUT, name))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path)
-    print("  %-22s %dx%d  %5.1f KB"
-          % (name, img.width, img.height, os.path.getsize(path) / 1024))
+    print("  %-30s %4dx%-4d %s %5.1f KB"
+          % (os.path.basename(name), img.width, img.height,
+             img.mode.ljust(4), os.path.getsize(path) / 1024))
 
 
 if __name__ == "__main__":
@@ -73,10 +93,17 @@ if __name__ == "__main__":
     save(splash.resize((splash.width * 2, splash.height * 2), Image.NEAREST),
          "boot_splash.png")
 
-    # App icon: square, mark centred, generous margin so it survives the
-    # rounded-corner mask every platform applies.
-    m = mark(48)
-    side = 512
-    icon = Image.new("RGBA", (side, side), hx(BG) + (255,))
-    icon.alpha_composite(m, ((side - m.width) // 2, (side - m.height) // 2))
-    save(icon, "icon.png")
+    # App icons. The mark is a wide 6x2 block sitting on the vertical centre,
+    # so the rounded-corner mask every platform applies cuts only background.
+    for side in (1024, 512):
+        icon = build_icon(side)
+        # The store icons live together; ui/icon.png is what project.godot
+        # points at for the editor and desktop window.
+        if side == 1024:
+            # No alpha: the App Store rejects an icon that has the channel at
+            # all, opaque or not.
+            save(icon.convert("RGB"), os.path.join("..", "assets", "icons",
+                                                   "icon_1024.png"))
+        else:
+            save(icon, os.path.join("..", "assets", "icons", "icon_512.png"))
+            save(icon, "icon.png")

@@ -1,0 +1,65 @@
+--- a/plugins/gamecenter/game_center.mm
++++ b/plugins/gamecenter/game_center.mm
+@@ -78,6 +78,44 @@
+ 	ClassDB::bind_method(D_METHOD("get_pending_event_count"), &GameCenter::get_pending_event_count);
+ 	ClassDB::bind_method(D_METHOD("pop_pending_event"), &GameCenter::pop_pending_event);
+ };
++
++// Godot 4.7 uses the UIScene lifecycle: the window belongs to the
++// UIWindowScene, and the app delegate's `window` getter returns nil (see
++// drivers/apple_embedded/app_delegate_service.mm, which only ever sets it to
++// nil). The original `delegate.window.rootViewController` therefore never
++// resolves, and authenticate() fails with !root_controller forever.
++// Resolve through the connected scenes, keeping the legacy path as a fallback
++// for older engines.
++static UIViewController *godot_gc_root_controller() {
++	UIViewController *found = nil;
++
++	if (@available(iOS 13.0, *)) {
++		for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
++			if (![scene isKindOfClass:[UIWindowScene class]]) {
++				continue;
++			}
++			UIWindowScene *window_scene = (UIWindowScene *)scene;
++			for (UIWindow *window in window_scene.windows) {
++				if (window.isKeyWindow && window.rootViewController) {
++					return window.rootViewController;
++				}
++				if (!found && window.rootViewController) {
++					found = window.rootViewController;
++				}
++			}
++		}
++	}
++	if (found) {
++		return found;
++	}
++
++	// Pre-scene engines, and anything that still hangs a window off the delegate.
++	id<UIApplicationDelegate> delegate = [UIApplication sharedApplication].delegate;
++	if ([delegate respondsToSelector:@selector(window)]) {
++		return delegate.window.rootViewController;
++	}
++	return nil;
++}
+ 
+ Error GameCenter::authenticate() {
+ 	//if this class isn't available, game center isn't implemented
+@@ -88,7 +126,7 @@
+ 	GKLocalPlayer *player = [GKLocalPlayer localPlayer];
+ 	ERR_FAIL_COND_V(![player respondsToSelector:@selector(authenticateHandler)], ERR_UNAVAILABLE);
+ 
+-	UIViewController *root_controller = [[UIApplication sharedApplication] delegate].window.rootViewController;
++	UIViewController *root_controller = godot_gc_root_controller();
+ 	ERR_FAIL_COND_V(!root_controller, FAILED);
+ 
+ 	// This handler is called several times.  First when the view needs to be shown, then again
+@@ -320,7 +358,7 @@
+ 	GKGameCenterViewController *controller = [[GKGameCenterViewController alloc] init];
+ 	ERR_FAIL_COND_V(!controller, FAILED);
+ 
+-	UIViewController *root_controller = [[UIApplication sharedApplication] delegate].window.rootViewController;
++	UIViewController *root_controller = godot_gc_root_controller();
+ 	ERR_FAIL_COND_V(!root_controller, FAILED);
+ 
+ 	controller.gameCenterDelegate = gameCenterDelegate;

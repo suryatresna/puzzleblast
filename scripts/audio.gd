@@ -1,9 +1,10 @@
 extends Node
 ## Music and sound effects. Autoloaded as `Audio`.
 ##
-## Assets live in `audio/` and are meant to be replaced -- see audio/README.md.
+## Assets live in `assets/audio/` and are meant to be replaced -- see
+## assets/audio/README.md.
 ## Lookup is extension-agnostic: `Audio.play("place")` resolves
-## `res://audio/sfx/place` against .wav, .ogg and .mp3 in that order, so
+## `res://assets/audio/sfx/place` against .wav, .ogg and .mp3 in that order, so
 ## swapping a file's format needs no code change. A missing file is not an
 ## error; it just plays nothing, which keeps the game running while assets are
 ## being replaced.
@@ -12,11 +13,11 @@ extends Node
 ## other settings sections. This node owns those keys.
 
 const SAVE_PATH := "user://settings.cfg"
-const MUSIC_DIR := "res://audio/music/"
+const MUSIC_DIR := "res://assets/audio/music/"
 
 ## Tracks kept out of the in-game shuffle. `game_over` is reserved as the lose
 ## stinger; `theme` is the generated placeholder from before real music was
-## added. Anything else dropped into audio/music/ joins the shuffle
+## added. Anything else dropped into assets/audio/music/ joins the shuffle
 ## automatically.
 const MUSIC_EXCLUDE := ["game_over", "theme"]
 
@@ -36,7 +37,7 @@ const GAME_REPEATS := 5
 ## playlist that advances on `finished`, those would change the music every
 ## few seconds. Set to 0.0 to shuffle everything regardless of length.
 const MIN_TRACK_SECONDS := 20.0
-const SFX_DIR := "res://audio/sfx/"
+const SFX_DIR := "res://assets/audio/sfx/"
 const EXTENSIONS := [".wav", ".ogg", ".mp3"]
 
 ## How many effects can overlap. A line clear that cascades fires several in
@@ -235,7 +236,7 @@ func _current_track_name() -> String:
 
 
 ## Every music file in the directory that is not excluded. Scanned rather than
-## listed so dropping a track into audio/music/ needs no code change.
+## listed so dropping a track into assets/audio/music/ needs no code change.
 func _scan_music() -> Array[String]:
 	var found: Array[String] = []
 	var dir := DirAccess.open(MUSIC_DIR)
