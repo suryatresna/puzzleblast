@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="ComplexPuzzle"
-config/description="A complex puzzle game for Android and iOS."
+config/name="Pixel Blast"
+config/description="A pixel-art block puzzle for Android and iOS."
 config/version="0.1.0"
 run/main_scene="res://scenes/splash.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
@@ -23,6 +23,7 @@ config/icon="res://ui/icon.svg"
 
 App="*res://scripts/app.gd"
 Scores="*res://scripts/scores.gd"
+Difficulty="*res://scripts/difficulty.gd"
 
 [display]
 

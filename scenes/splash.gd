@@ -7,12 +7,15 @@ const FADE_IN := 0.5
 const HOLD := 1.1
 
 @onready var _content: Control = %Content
+@onready var _title: Label = %Title
 @onready var _loading_bar: Control = %LoadingBarFill
 
 var _leaving := false
 
 
 func _ready() -> void:
+	# Taken from project settings so the name lives in exactly one place.
+	_title.text = App.game_name
 	_content.modulate.a = 0.0
 	_loading_bar.scale.x = 0.0
 

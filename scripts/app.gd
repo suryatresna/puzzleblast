@@ -15,8 +15,10 @@ const SCENE_GAME := "res://scenes/game.tscn"
 
 const FADE_DURATION := 0.22
 
+const Haptics := preload("res://scripts/haptics.gd")
+
 var game_name: String:
-	get: return ProjectSettings.get_setting("application/config/name", "ComplexPuzzle")
+	get: return ProjectSettings.get_setting("application/config/name", "Pixel Blast")
 
 var game_version: String:
 	get: return ProjectSettings.get_setting("application/config/version", "0.0.0")
@@ -68,6 +70,14 @@ func quit_game() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 	await _fade_to(1.0)
 	get_tree().quit()
+
+
+## Backgrounding the app should never leave the motor running.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT \
+			or what == NOTIFICATION_APPLICATION_PAUSED \
+			or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		Haptics.stop()
 
 
 func _fade_to(alpha: float) -> void:

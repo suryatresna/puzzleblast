@@ -11,6 +11,9 @@ signal score_changed(score: int, best: int, combo: int)
 signal lines_cleared(rows: Array, cols: Array, cell_count: int, points: int)
 signal piece_placed(cells: Array, color_index: int)
 signal bomb_detonated(at: Vector2i, from_row: int, to_row: int, cleared: int, points: int)
+signal laser_fired(at: Vector2i, cleared: int, points: int)
+signal board_morphed(dropped: int)
+signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
 
 const SIZE := 8
@@ -22,6 +25,13 @@ const POP_DURATION := 0.24
 const POINTS_PER_CELL := 1
 ## Awarded per filled cell a bomb takes out.
 const BOMB_POINTS_PER_CELL := 5
+## Awarded per filled cell a laser burns through.
+const LASER_POINTS_PER_CELL := 4
+## Most cells a fit piece will grow to. Without a cap it would swallow the
+## whole board on an open layout.
+const FIT_MAX_CELLS := 5
+## How long settled blocks take to drop after a morph.
+const FALL_TIME := 0.30
 const LINE_BASE := 100
 const MAX_COMBO := 5
 
@@ -46,6 +56,8 @@ var shake_offset := Vector2.ZERO:
 var _grid: Array = []
 ## Cell -> seconds elapsed in its landing animation.
 var _pops: Dictionary = {}
+## Cell -> {dist, t}: blocks sliding down into place after a morph.
+var _falls: Dictionary = {}
 var _styles: Array[StyleBoxFlat] = []
 var _empty_style := StyleBoxFlat.new()
 var _ghost_ok := StyleBoxFlat.new()
@@ -71,6 +83,7 @@ func reset() -> void:
 	lines = 0
 	alive = true
 	_pops.clear()
+	_falls.clear()
 	preview_cells = []
 	score_changed.emit(score, best, combo)
 	queue_redraw()
@@ -94,12 +107,13 @@ func can_place(cells: Array, origin: Vector2i) -> bool:
 
 ## Places the piece, resolves any completed lines and updates the score.
 ## Returns false if the position was illegal and nothing changed.
-func place(cells: Array, origin: Vector2i, color_index: int, is_bomb := false) -> bool:
+func place(cells: Array, origin: Vector2i, color_index: int,
+		power := Blocks.Power.NONE) -> bool:
 	if not alive or not can_place(cells, origin):
 		return false
 
-	if is_bomb:
-		_detonate(origin)
+	if power != Blocks.Power.NONE:
+		_fire_power(power, origin, color_index)
 		return true
 
 	var placed: Array = []
@@ -120,7 +134,97 @@ func place(cells: Array, origin: Vector2i, color_index: int, is_bomb := false) -
 	return true
 
 
-## Wipes the half of the board the bomb landed in. The split is along the
+func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int) -> void:
+	match power:
+		Blocks.Power.BOMB: _detonate(at)
+		Blocks.Power.LASER: _laser(at)
+		Blocks.Power.MORPH: _morph(at, color_index)
+		Blocks.Power.FIT: _fit(at, color_index)
+
+
+## Burns out the whole row and column the laser lands on.
+func _laser(at: Vector2i) -> void:
+	var doomed := {}
+	for x in SIZE:
+		doomed[Vector2i(x, at.y)] = true
+	for y in SIZE:
+		doomed[Vector2i(at.x, y)] = true
+
+	var cleared := 0
+	for cell: Vector2i in doomed:
+		if _grid[cell.y][cell.x] != EMPTY:
+			cleared += 1
+		_grid[cell.y][cell.x] = EMPTY
+		_pops.erase(cell)
+
+	var points := cleared * LASER_POINTS_PER_CELL
+	score += points
+	best = maxi(best, score)
+	laser_fired.emit(at, cleared, points)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Drops every settled block to the bottom of its column, closing the gaps a
+## run leaves behind. Rows completed by the collapse then clear and score, so a
+## well-timed morph can cash in a board that looked wasted.
+func _morph(at: Vector2i, color_index: int) -> void:
+	_grid[at.y][at.x] = color_index          # the piece itself falls too
+	_pops[at] = 0.0
+
+	var dropped := 0
+	for x in SIZE:
+		var write := SIZE - 1
+		for y in range(SIZE - 1, -1, -1):
+			if _grid[y][x] == EMPTY:
+				continue
+			if write != y:
+				_grid[write][x] = _grid[y][x]
+				_grid[y][x] = EMPTY
+				_pops.erase(Vector2i(x, y))
+				# Remember how far it fell so it can be animated in.
+				_falls[Vector2i(x, write)] = {"dist": float(write - y), "t": 0.0}
+				dropped += 1
+			write -= 1
+
+	board_morphed.emit(dropped)
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Grows to fill the pocket of empty cells it was dropped into, up to
+## FIT_MAX_CELLS. Breadth-first from the drop point, so it spreads evenly
+## rather than snaking off in one direction.
+func _fit(at: Vector2i, color_index: int) -> void:
+	var filled: Array = []
+	var seen := {at: true}
+	var queue: Array = [at]
+
+	while not queue.is_empty() and filled.size() < FIT_MAX_CELLS:
+		var cell: Vector2i = queue.pop_front()
+		_grid[cell.y][cell.x] = color_index
+		_pops[cell] = 0.0
+		filled.append(cell)
+		for step: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+			var n: Vector2i = cell + step
+			if n.x < 0 or n.x >= SIZE or n.y < 0 or n.y >= SIZE:
+				continue
+			if seen.has(n) or _grid[n.y][n.x] != EMPTY:
+				continue
+			seen[n] = true
+			queue.append(n)
+
+	score += filled.size() * POINTS_PER_CELL
+	piece_fitted.emit(filled, color_index)
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Wipes the half of the board the bomb landed in.## Wipes the half of the board the bomb landed in. The split is along the
 ## horizontal midline, so the player can aim it at whichever half is worse.
 ## Nothing is scored for the bomb cell itself -- only for what it destroys.
 func _detonate(at: Vector2i) -> void:
@@ -196,6 +300,16 @@ func _resolve_lines() -> void:
 
 
 func _process(delta: float) -> void:
+	if not _falls.is_empty():
+		var landed: Array = []
+		for cell: Vector2i in _falls:
+			_falls[cell]["t"] += delta
+			if _falls[cell]["t"] >= FALL_TIME:
+				landed.append(cell)
+		for cell: Vector2i in landed:
+			_falls.erase(cell)
+		queue_redraw()
+
 	if _pops.is_empty():
 		return
 	var finished: Array = []
@@ -277,7 +391,10 @@ func _draw() -> void:
 		return
 	_sync_metrics(cell)
 
-	draw_rect(Rect2(shake_offset, size), Color(0.035, 0.031, 0.086, 0.55))
+	# Nearly opaque on purpose: the combo shower drifts behind this panel, and
+	# at a lower alpha the particles bleed through and look like they are on
+	# top of the playfield.
+	draw_rect(Rect2(shake_offset, size), Color(0.043, 0.039, 0.098, 0.93))
 
 	for y in SIZE:
 		for x in SIZE:
@@ -287,6 +404,12 @@ func _draw() -> void:
 				continue
 			var rect := cell_rect(x, y, cell)
 			var key := Vector2i(x, y)
+			if _falls.has(key):
+				# Drawn above its final cell, easing down into place.
+				var ft: float = clampf(float(_falls[key]["t"]) / FALL_TIME, 0.0, 1.0)
+				var eased: float = 1.0 - pow(1.0 - ft, 3.0)
+				var lift: float = float(_falls[key]["dist"]) * cell * (1.0 - eased)
+				rect.position.y -= lift
 			if _pops.has(key):
 				# Springs from 55% up through a slight overshoot to full size.
 				var t: float = clampf(float(_pops[key]) / POP_DURATION, 0.0, 1.0)

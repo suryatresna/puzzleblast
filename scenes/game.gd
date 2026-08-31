@@ -6,6 +6,7 @@ extends Control
 ## spent, and the run ends when nothing left in the tray fits anywhere.
 
 const Blocks := preload("res://scripts/blocks.gd")
+const Haptics := preload("res://scripts/haptics.gd")
 
 const TRAY_SIZE := 5
 
@@ -14,32 +15,52 @@ const TRAY_SIZE := 5
 const DRAG_LIFT_CELLS := 1.4
 const SHAKE_DECAY := 7.0
 
+## How hard the dragged piece is pulled onto the grid once it is over a legal
+## spot. Higher is snappier; this settles in roughly a tenth of a second, so
+## the piece reads as magnetised to the cell rather than floating under the
+## finger. Set to 0 to disable snapping and follow the pointer exactly.
+const DRAG_SNAP_SPEED := 34.0
+
 ## Dealing a fresh hand: a beat to register the tray emptying, then each card
 ## pops in a little after the one before it.
 const DEAL_DELAY := 0.12
 const DEAL_STAGGER := 0.07
 const DEAL_TIME := 0.34
 
-## Clearing lines on this many placements in a row earns a bomb. Awarded once
-## per streak, so a 5x run hands out one bomb rather than four.
-const COMBO_BOMB_THRESHOLD := 2
+## Streak length that earns a bomb comes from the difficulty setting; a bomb is
+## awarded once per streak, so a 5x run hands out one rather than four.
+
+## Colours for the combo badge: muted with no streak running, gold once the
+## multiplier is actually worth something.
+const COMBO_IDLE := Color(0.651, 0.635, 0.8)
+const COMBO_HOT := Color(1, 0.83, 0.32)
 
 @onready var _board: Control = %Board
 @onready var _effects: Node2D = %Effects
 @onready var _drag_view: Control = %DragView
 @onready var _overlay: Node2D = %OverlayEffects
+@onready var _aura: ColorRect = %ComboAura
+@onready var _atmosphere: Node2D = %ComboParticles
+@onready var _background: Control = %Background
 
 var _tray: Array = []          # TRAY_SIZE entries; {} means spent
 var _slots: Array[Control] = []
 var _drag_index := -1
 var _drag_origin := Vector2i.ZERO
+## Where the dragged piece is heading; `_process` eases it there each frame.
+var _drag_target := Vector2.ZERO
 var _shake := 0.0
 ## Best score when this run started, and whether it has been passed yet, so the
 ## celebration fires exactly once per run.
 var _best_at_start := 0
 var _beat_best := false
 var _deal_tweens: Array = []
-var _combo_bomb_given := false
+var _combo_power_given := false
+var _last_combo := 0
+var _aura_tween: Tween
+## Which step of the background flow the run is on. -1 means the default
+## palette; it only ever moves forward, and the backdrop keeps the last colour.
+var _flow_step := -1
 
 
 func _ready() -> void:
@@ -47,7 +68,11 @@ func _ready() -> void:
 
 	_board.score_changed.connect(_on_score_changed)
 	_board.piece_placed.connect(_on_piece_placed)
+	Difficulty.tightened.connect(_on_difficulty_tightened)
 	_board.bomb_detonated.connect(_on_bomb_detonated)
+	_board.laser_fired.connect(_on_laser_fired)
+	_board.board_morphed.connect(_on_board_morphed)
+	_board.piece_fitted.connect(_on_piece_fitted)
 	_board.lines_cleared.connect(_on_lines_cleared)
 	_board.game_over.connect(_on_game_over)
 
@@ -67,6 +92,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _drag_index >= 0:
+		# Frame-rate independent easing, so the pull feels the same at 30 or
+		# 120 fps rather than being tied to how often _process happens to run.
+		var t: float = 1.0 - exp(-DRAG_SNAP_SPEED * delta) if DRAG_SNAP_SPEED > 0.0 else 1.0
+		_drag_view.position = _drag_view.position.lerp(_drag_target, t)
+
 	if _shake > 0.0:
 		_shake = maxf(0.0, _shake - SHAKE_DECAY * delta * maxf(_shake, 1.0))
 		var offset := Vector2(randf_range(-_shake, _shake), randf_range(-_shake, _shake))
@@ -81,11 +112,13 @@ func _process(delta: float) -> void:
 
 func _refill_tray() -> void:
 	_tray.clear()
+	var bias: float = Difficulty.small_piece_bias()
 	for i in TRAY_SIZE:
-		_tray.append(Blocks.random_piece())
-	# One roll per hand, so a tray holds at most a single bomb.
-	if randf() < Blocks.BOMB_TRAY_CHANCE:
-		_tray[randi() % TRAY_SIZE] = Blocks.bomb_piece()
+		_tray.append(Blocks.random_piece(bias))
+	# One roll per hand, so a tray holds at most a single special. Which of the
+	# four turns up is an even draw.
+	if randf() < Difficulty.tray_special_chance():
+		_tray[randi() % TRAY_SIZE] = Blocks.random_special_piece()
 	_sync_tray()
 	_deal_animation()
 
@@ -132,20 +165,26 @@ func _pop_in(view: Control, delay: float) -> Tween:
 	return tween
 
 
-func _tray_has_bomb() -> bool:
+## True when the hand already holds any special, so the combo reward never
+## stacks a second one on top.
+func _tray_has_power() -> bool:
 	for piece: Dictionary in _tray:
-		if Blocks.is_bomb(piece):
+		if Blocks.is_power(piece):
 			return true
 	return false
 
 
-## Hands the player a bomb for stringing clears together. Skipped when the tray
-## already holds one, which keeps the "at most one bomb in hand" rule intact.
-func _maybe_grant_combo_bomb() -> void:
-	if _combo_bomb_given or _board.combo < COMBO_BOMB_THRESHOLD:
+## Hands the player a special for stringing clears together -- any of the four,
+## drawn at random, so a streak is not always worth the same thing. Skipped when
+## the hand already holds one, keeping the "at most one special" rule intact.
+func _maybe_grant_combo_power() -> void:
+	var threshold: int = Difficulty.combo_power_threshold()
+	if threshold <= 0:
+		return                       # this band never grants one
+	if _combo_power_given or _board.combo < threshold:
 		return
-	_combo_bomb_given = true
-	if _tray_has_bomb():
+	_combo_power_given = true
+	if _tray_has_power():
 		return
 
 	# Prefer a slot the player has already emptied; only displace a live card
@@ -157,12 +196,15 @@ func _maybe_grant_combo_bomb() -> void:
 	var slot: int = empty_slots.pick_random() if not empty_slots.is_empty() \
 		else randi() % TRAY_SIZE
 
-	_tray[slot] = Blocks.bomb_piece()
+	var reward: Dictionary = Blocks.random_special_piece()
+	var power: Blocks.Power = Blocks.power_of(reward)
+	_tray[slot] = reward
 	_sync_tray()
 	_pop_in(_slots[slot].get_node("View"), 0.0)
 
 	var at: Vector2 = _slots[slot].get_global_rect().get_center() - Vector2(0.0, 150.0)
-	_overlay.popup("BOMB!", at, Blocks.COLORS[Blocks.BOMB_COLOR], false)
+	_overlay.popup(Blocks.power_name(power), at, Blocks.power_color(power), false)
+	Haptics.clear_lines(3)      # reward buzz, distinct from a plain clear
 
 
 ## A restart mid-deal would otherwise leave cards stuck part-way in.
@@ -238,6 +280,9 @@ func _begin_drag(pointer: Vector2) -> void:
 			_drag_view.show()
 			_sync_tray()
 			_update_drag(pointer)
+			# Land on the pick-up point immediately; easing in from wherever
+			# the view happened to sit last would look like a glitch.
+			_drag_view.position = _drag_target
 			return
 
 
@@ -250,13 +295,21 @@ func _update_drag(pointer: Vector2) -> void:
 	# The piece is centred on a point lifted above the finger.
 	var focus := pointer - Vector2(0.0, DRAG_LIFT_CELLS * cell)
 	var top_left := focus - piece_px * 0.5
-	_drag_view.position = top_left
 
 	var local := top_left - _board.global_position
 	_drag_origin = Vector2i(roundi(local.x / cell), roundi(local.y / cell))
 
 	var cells: Array = _drag_view.piece["cells"]
 	_board.preview_valid = _board.can_place(cells, _drag_origin)
+
+	# Over a legal spot the piece is pulled onto the exact cell it will occupy,
+	# so what you see is precisely what gets placed. Off the grid, or over an
+	# illegal spot, it tracks the pointer so the drag never feels stuck.
+	if _board.preview_valid and DRAG_SNAP_SPEED > 0.0:
+		_drag_target = _board.global_position + Vector2(_drag_origin) * cell
+	else:
+		_drag_target = top_left
+
 	var ghost: Array = []
 	for c: Vector2i in cells:
 		ghost.append(_drag_origin + c)
@@ -284,7 +337,7 @@ func _end_drag(_pointer: Vector2) -> void:
 		_sync_tray()          # illegal drop puts the card back in its slot
 		return
 
-	_board.place(piece["cells"], _drag_origin, piece["color"], Blocks.is_bomb(piece))
+	_board.place(piece["cells"], _drag_origin, piece["color"], Blocks.power_of(piece))
 	_tray[index] = {}
 
 	if _tray_spent():
@@ -292,7 +345,7 @@ func _end_drag(_pointer: Vector2) -> void:
 	else:
 		_sync_tray()
 
-	_maybe_grant_combo_bomb()
+	_maybe_grant_combo_power()
 
 	if not _board.has_any_move(_remaining_pieces()):
 		_board.declare_game_over()
@@ -301,11 +354,12 @@ func _end_drag(_pointer: Vector2) -> void:
 # --- board reactions ---------------------------------------------------------
 
 func _on_score_changed(score: int, best: int, combo: int) -> void:
-	%ScoreValue.text = str(score)
-	%BestValue.text = str(best)
-	%ComboValue.text = "x%d" % maxi(combo, 1)
+	%ScoreValue.set_value(score)
+	Difficulty.update(score)
+	%BestValue.text = "best  %d   ·   %s" % [best, Difficulty.level_name()]
+	_show_combo(combo)
 	if combo == 0:
-		_combo_bomb_given = false
+		_combo_power_given = false
 
 	# Overtaking the previous best is worth celebrating the moment it happens,
 	# not just on the game over screen. Skipped on a first-ever run, where
@@ -315,16 +369,92 @@ func _on_score_changed(score: int, best: int, combo: int) -> void:
 		_celebrate_best()
 
 
+## Tints the whole screen in the rung's colour and sends a matching shower up
+## behind the board. Kept at low alpha and faded out quickly -- this sits under
+## the playfield, and anything stronger makes the blocks hard to read.
+func _wash_background(combo: int, screen: Vector2) -> void:
+	if combo < 2 or _flow_step < 0:
+		return                       # a lone clear does not colour the screen
+
+	var tint: Color = _overlay.flow_color(_flow_step)
+	_atmosphere.combo_atmosphere(
+		tint, _overlay.flow_has_flowers(_flow_step), combo, screen)
+
+	if _aura_tween and _aura_tween.is_valid():
+		_aura_tween.kill()
+	var peak := Color(tint.r, tint.g, tint.b, 0.18)
+	_aura.color = peak
+	_aura_tween = create_tween()
+	_aura_tween.tween_property(_aura, "color", Color(tint.r, tint.g, tint.b, 0.0), 1.1) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+
+## The badge only lights up once a streak is actually multiplying the score.
+## A permanent "x1" reads as though a combo is always running, which it is not:
+## combo 0 means the last placement cleared nothing.
+func _show_combo(combo: int) -> void:
+	var label: Label = %ComboValue
+	if combo >= 2:
+		label.text = "x%d" % combo
+		label.add_theme_color_override("font_color", COMBO_HOT)
+		%ComboBox.modulate.a = 1.0
+	elif combo == 1:
+		label.text = "x1"
+		label.add_theme_color_override("font_color", COMBO_IDLE)
+		%ComboBox.modulate.a = 0.8
+	else:
+		label.text = "--"
+		label.add_theme_color_override("font_color", COMBO_IDLE)
+		%ComboBox.modulate.a = 0.45
+
+	# Only punch when the streak actually grew, not on every score change.
+	if combo > _last_combo and combo >= 2:
+		_pulse_combo()
+	_last_combo = combo
+
+
+## Recolours the whole backdrop for the duration of a streak, and eases it back
+## to the default palette once the streak breaks.
+## Steps the backdrop to the next colour in the flow and leaves it there. The
+## background is never washed back to the default mid-run: it holds the last
+## streak's colour until another streak moves it along.
+func _advance_flow() -> void:
+	_flow_step += 1
+	_background.tint_to(_overlay.flow_color(_flow_step), 1.0)
+
+
+func _pulse_combo() -> void:
+	var label: Control = %ComboValue
+	label.pivot_offset = label.size * 0.5
+	# from() pins the start; see the note in score_counter.gd.
+	var peak := Vector2(1.4, 1.4)
+	label.scale = peak
+	var tween := create_tween()
+	tween.tween_property(label, "scale", Vector2.ONE, 0.30).from(peak) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+
+## Called out so the ramp is visible: the deal quietly getting stingier with no
+## explanation would just read as bad luck.
+func _on_difficulty_tightened(level: int) -> void:
+	var screen: Vector2 = get_viewport_rect().size
+	_overlay.popup("%s" % Difficulty.name_of(level).to_upper(),
+		screen * Vector2(0.5, 0.30), Color(1, 0.55, 0.2), false)
+	Haptics.clear_lines(2)
+
+
 func _celebrate_best() -> void:
 	var area: Vector2 = get_viewport_rect().size
 	_overlay.celebrate(area)
 	_overlay.popup("NEW BEST!", area * Vector2(0.5, 0.34), Color(1, 0.83, 0.32), true)
+	Haptics.celebrate(get_tree())
 
 
 ## Every landing gets a small puff so placing a piece feels like it connects.
 func _on_piece_placed(cells: Array, color_index: int) -> void:
 	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
 	_shake = maxf(_shake, 2.5)
+	Haptics.place()
 
 
 func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) -> void:
@@ -334,12 +464,22 @@ func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) 
 	var color: Color = Blocks.COLORS[0] if line_count < 3 else Blocks.COLORS[3]
 
 	_effects.explode_lines(rows, cols, extent, cell, color)
-	var mid := Vector2(extent * 0.5, extent * 0.5)
-	_effects.popup(_effects.clear_label(line_count), mid, color, line_count >= 3)
-	_effects.popup("+%d" % points, mid + Vector2(0.0, cell * 1.5),
-		Color(0.945, 0.941, 1), false)
+
+	# The combo call-out replaces the old per-clear word: two labels fighting
+	# for the middle of the board read as clutter. Both sit on the overlay so
+	# they are centred on the screen rather than on the board.
+	var screen: Vector2 = get_viewport_rect().size
+	# combo == 2 is exactly the clear that opens a streak, so the palette steps
+	# once per streak rather than once per clear.
+	if _board.combo == 2:
+		_advance_flow()
+	_wash_background(_board.combo, screen)
+	_overlay.combo_banner(_board.combo, screen * Vector2(0.5, 0.46))
+	_overlay.points_popup("+%d" % points, screen * Vector2(0.5, 0.60),
+		Color(0.945, 0.941, 1), line_count >= 3)
 
 	_shake = 8.0 + line_count * 6.0
+	Haptics.clear_lines(line_count)
 	# Clearing can free space, so previously dead cards may be playable again.
 	_sync_tray()
 
@@ -360,12 +500,43 @@ func _on_bomb_detonated(at: Vector2i, from_row: int, to_row: int,
 	print_verbose("bomb cleared %d cells for %d points" % [cleared, points])
 
 	_shake = 26.0
+	Haptics.blast()
 	# Half the board just opened up, so dead cards may be playable again.
 	_sync_tray()
 
 
+func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
+	var cell: float = _board.cell_size()
+	var extent: float = _board.size.x
+	_effects.laser_beam(at, extent, cell)
+	_overlay.combo_banner_text("LASER!", Color(1, 0.95, 0.55))
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	_shake = 20.0
+	Haptics.blast()
+	_sync_tray()
+
+
+func _on_board_morphed(dropped: int) -> void:
+	_effects.morph_sweep(_board.size.x, Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
+	_overlay.combo_banner_text("COLLAPSE!", Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
+	_shake = 6.0 + mini(dropped, 20) * 0.8
+	Haptics.clear_lines(3)
+	_sync_tray()
+
+
+func _on_piece_fitted(cells: Array, color_index: int) -> void:
+	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
+	_overlay.combo_banner_text("FIT!", Blocks.COLORS[color_index])
+	_shake = 5.0
+	Haptics.clear_lines(1)
+	_sync_tray()
+
+
 func _on_game_over() -> void:
-	var rank: int = Scores.submit(_board.score, _board.lines)
+	Haptics.stop()               # nothing should still be buzzing on game over
+	var rank: int = Scores.submit(_board.score, _board.lines, Difficulty.peak_name())
 	_board.best = Scores.best()
 	if rank == 1:
 		_overlay.celebrate(get_viewport_rect().size)
@@ -398,6 +569,7 @@ func _notification(what: int) -> void:
 func _pause() -> void:
 	if %PausePanel.visible or %GameOverPanel.visible:
 		return
+	Haptics.stop()
 	_cancel_drag()
 	%PausePanel.show()
 	%ResumeButton.grab_focus()
@@ -435,14 +607,26 @@ func _restart() -> void:
 		child.queue_free()
 	for child in _overlay.get_children():
 		child.queue_free()
+	for child in _atmosphere.get_children():
+		child.queue_free()
+	if _aura_tween and _aura_tween.is_valid():
+		_aura_tween.kill()
+	_aura.color = Color(0, 0, 0, 0)
+	# A new run starts from the default palette again.
+	_flow_step = -1
+	Difficulty.reset()
+	_background.tint_to(Color.WHITE, 0.0, 0.2)
 	_shake = 0.0
 	_best_at_start = Scores.best()
 	_beat_best = false
-	_combo_bomb_given = false
+	_combo_power_given = false
+	_last_combo = 0
+	%ScoreValue.reset_to(0)
 	_board.reset()
 	_board.best = Scores.best()
 	_refill_tray()
 
 
 func _leave() -> void:
+	Haptics.stop()
 	App.goto_scene(App.SCENE_MAIN_MENU)

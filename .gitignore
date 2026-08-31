@@ -14,3 +14,11 @@
 /puzzle.pck
 /*.xcframework/
 /PrivacyInfo.xcprivacy
+
+# Xcode export output. This lands in the project tree and reaches ~800MB
+# (DerivedData, MoltenVK static libs, the .pck) -- never commit it.
+/ios/
+
+# Editor/agent tooling metadata
+.serena/
+.DS_Store

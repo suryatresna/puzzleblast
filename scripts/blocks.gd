@@ -15,15 +15,23 @@ const COLORS := [
 	Color("fb7185"), # rose
 	Color("f472b6"), # pink
 	Color("ef4444"), # bomb
+	Color("2dd4bf"), # morph
+	Color("fde047"), # laser
+	Color("a3e635"), # fit
 ]
 
-## Index into COLORS for the bomb tile.
-const BOMB_COLOR := 8
-## Chance that a freshly dealt tray contains a bomb. Rolled once per refill,
-## not per card, so a hand can never hold more than one -- three bombs at once
-## would trivialise the board.
-const BOMB_TRAY_CHANCE := 0.20
+## Special single-cell pieces. NONE is an ordinary shape.
+enum Power { NONE, BOMB, MORPH, LASER, FIT }
 
+## Palette index and glyph for each power.
+const POWER_COLOR := {
+	Power.BOMB: 8,
+	Power.MORPH: 9,
+	Power.LASER: 10,
+	Power.FIT: 11,
+}
+
+const BOMB_COLOR := 8
 ## weight: relative spawn frequency. rotate: also emit the distinct rotations.
 const BASE := [
 	{"cells": [Vector2i(0, 0)], "weight": 2, "color": 3, "rotate": false},
@@ -74,30 +82,81 @@ static func catalogue() -> Array:
 	return _catalogue
 
 
-## A single cell that detonates on placement, clearing half the board.
-static func bomb_piece() -> Dictionary:
+## A single cell carrying a power. All of them are 1x1: they are placed like
+## any other piece and then do their work.
+static func power_piece(power: Power) -> Dictionary:
 	return {
 		"cells": [Vector2i(0, 0)],
-		"color": BOMB_COLOR,
+		"color": int(POWER_COLOR[power]),
 		"size": Vector2i(1, 1),
 		"weight": 0,
-		"bomb": true,
+		"power": int(power),
 	}
 
 
+static func bomb_piece() -> Dictionary:
+	return power_piece(Power.BOMB)
+
+
+static func power_of(piece: Dictionary) -> Power:
+	return int(piece.get("power", Power.NONE)) as Power
+
+
+static func is_power(piece: Dictionary) -> bool:
+	return power_of(piece) != Power.NONE
+
+
 static func is_bomb(piece: Dictionary) -> bool:
-	return bool(piece.get("bomb", false))
+	return power_of(piece) == Power.BOMB
+
+
+## Every special. Both the dealt hand and the combo reward draw from this, with
+## equal odds, so any of the four can turn up either way.
+const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT]
+
+## Shown on the call-out when a streak earns a special.
+const POWER_NAMES := {
+	Power.BOMB: "BOMB!",
+	Power.MORPH: "COLLAPSE!",
+	Power.LASER: "LASER!",
+	Power.FIT: "FIT!",
+}
+
+
+static func power_name(power: Power) -> String:
+	return String(POWER_NAMES.get(power, "POWER!"))
+
+
+static func power_color(power: Power) -> Color:
+	return COLORS[int(POWER_COLOR[power])]
+
+
+## An even draw from all four specials.
+static func random_special_piece() -> Dictionary:
+	return power_piece(ALL_POWERS[randi() % ALL_POWERS.size()])
 
 
 ## Only ever returns ordinary shapes; bombs are dealt by the tray.
-static func random_piece() -> Dictionary:
+## `small_bias` above 1.0 makes 1- and 2-cell pieces correspondingly more
+## likely, which is what the easier levels use to keep the board manageable.
+static func random_piece(small_bias := 1.0) -> Dictionary:
 	var list := catalogue()
-	var roll := randi_range(0, _total_weight - 1)
+	var total := 0.0
 	for piece: Dictionary in list:
-		roll -= piece["weight"]
-		if roll < 0:
+		total += _biased_weight(piece, small_bias)
+	var roll := randf() * total
+	for piece: Dictionary in list:
+		roll -= _biased_weight(piece, small_bias)
+		if roll <= 0.0:
 			return piece
 	return list[0]
+
+
+static func _biased_weight(piece: Dictionary, small_bias: float) -> float:
+	var weight := float(piece["weight"])
+	if piece["cells"].size() <= 2:
+		return weight * small_bias
+	return weight
 
 
 static func bounds(cells: Array) -> Vector2i:
@@ -159,8 +218,61 @@ static func _normalize(cells: Array) -> Array:
 	return out
 
 
-## Draws a bomb glyph inside `rect`. Procedural rather than an imported sprite
-## so it stays crisp at the tray's small preview size and the board's large one.
+## Draws the glyph for `power` inside `rect`. All procedural rather than
+## imported sprites, so they stay crisp at both the tray's small preview size
+## and the board's large one.
+static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
+	match power:
+		Power.BOMB: draw_bomb(ci, rect)
+		Power.MORPH: _draw_morph(ci, rect)
+		Power.LASER: _draw_laser(ci, rect)
+		Power.FIT: _draw_fit(ci, rect)
+
+
+## Three chevrons falling: the whole board drops and compacts.
+static func _draw_morph(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var w := span * 0.22
+	var thick := maxf(2.0, span * 0.09)
+	var ink := Color(0.05, 0.16, 0.15)
+	for i in 3:
+		var y: float = c.y - span * 0.20 + i * span * 0.19
+		ci.draw_line(Vector2(c.x - w, y), Vector2(c.x, y + w * 0.8), ink, thick)
+		ci.draw_line(Vector2(c.x, y + w * 0.8), Vector2(c.x + w, y), ink, thick)
+
+
+## A crosshair with beams running off both axes.
+static func _draw_laser(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var thick := maxf(2.0, span * 0.08)
+	var ink := Color(0.20, 0.14, 0.02)
+	ci.draw_line(Vector2(rect.position.x + span * 0.08, c.y),
+		Vector2(rect.end.x - span * 0.08, c.y), ink, thick)
+	ci.draw_line(Vector2(c.x, rect.position.y + span * 0.08),
+		Vector2(c.x, rect.end.y - span * 0.08), ink, thick)
+	ci.draw_circle(c, span * 0.17, ink)
+	ci.draw_circle(c, span * 0.09, Color(1, 1, 0.92))
+
+
+## Four arrows pushing outward: the piece grows to fill the gap.
+static func _draw_fit(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var thick := maxf(2.0, span * 0.085)
+	var ink := Color(0.13, 0.20, 0.03)
+	var reach := span * 0.30
+	var head := span * 0.11
+	for dir: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+		var tip := c + dir * reach
+		ci.draw_line(c + dir * span * 0.10, tip, ink, thick)
+		var side := Vector2(-dir.y, dir.x) * head
+		ci.draw_line(tip, tip - dir * head + side, ink, thick)
+		ci.draw_line(tip, tip - dir * head - side, ink, thick)
+
+
+## Draws a bomb glyph inside `rect`.
 static func draw_bomb(ci: CanvasItem, rect: Rect2) -> void:
 	var span := minf(rect.size.x, rect.size.y)
 	var body := span * 0.30

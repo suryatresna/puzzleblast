@@ -36,11 +36,14 @@ func best() -> int:
 
 ## Records a finished run and returns its 1-based rank, or 0 if the score did
 ## not make the table.
-func submit(score: int, lines: int) -> int:
+## `level` is recorded because an Easy run and a Super Hard run are not
+## comparable, and a table that hid the difference would be misleading.
+func submit(score: int, lines: int, level := "") -> int:
 	var entry := {
 		"id": _next_id,
 		"score": score,
 		"lines": lines,
+		"level": level,
 		"date": int(Time.get_unix_time_from_system()),
 	}
 	_next_id += 1
@@ -95,6 +98,7 @@ func _load() -> void:
 			"id": 0,
 			"score": int(row.get("score", 0)),
 			"lines": int(row.get("lines", 0)),
+			"level": String(row.get("level", "")),
 			"date": int(row.get("date", 0)),
 		})
 	_entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -113,6 +117,7 @@ func _save() -> void:
 	var cfg := ConfigFile.new()
 	var rows: Array = []
 	for e: Dictionary in _entries:
-		rows.append({"score": e["score"], "lines": e["lines"], "date": e["date"]})
+		rows.append({"score": e["score"], "lines": e["lines"],
+			"level": e["level"], "date": e["date"]})
 	cfg.set_value("leaderboard", "entries", rows)
 	cfg.save(SAVE_PATH)

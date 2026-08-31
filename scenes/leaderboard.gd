@@ -79,7 +79,9 @@ func _make_row(rank: int, entry: Dictionary) -> Control:
 	box.add_child(meta)
 
 	var lines_label := Label.new()
-	lines_label.text = "%d lines" % int(entry["lines"])
+	var level := String(entry.get("level", ""))
+	lines_label.text = "%d lines" % int(entry["lines"]) if level.is_empty() \
+		else "%d lines  ·  %s" % [int(entry["lines"]), level]
 	lines_label.add_theme_font_size_override("font_size", 26)
 	lines_label.add_theme_color_override("font_color", Color(0.651, 0.635, 0.8))
 	lines_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

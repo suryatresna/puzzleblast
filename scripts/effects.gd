@@ -9,9 +9,44 @@ extends Node2D
 const LineBurst := preload("res://ui/effects/line_burst.tscn")
 const SparkBurst := preload("res://ui/effects/spark_burst.tscn")
 const Confetti := preload("res://ui/effects/confetti.tscn")
+const ComboBurst := preload("res://ui/effects/combo_burst.tscn")
+const FlowerTexture := preload("res://ui/effects/flower.svg")
 const PlacePuff := preload("res://ui/effects/place_puff.tscn")
 
 const POPUP_LABELS := {1: "CLEAR!", 2: "DOUBLE!", 3: "TRIPLE!", 4: "QUAD!"}
+
+## Escalating call-outs for a combo streak, indexed by combo - 1. The streak
+## caps at 5, so every rung is reachable.
+const COMBO_WORDS := ["combo 1x", "Combo Pair!", "STRIKE!!", "AMAZE!!!", "SUPERDD!!!"]
+const COMBO_SIZES := [74, 96, 118, 140, 164]
+## Text colours, kept light so they read against the tinted background below.
+const COMBO_COLORS := [
+	Color(0.945, 0.941, 1),     # 1x     - plain
+	Color(0.60, 0.78, 1.0),     # pair   - blue
+	Color(1.0, 0.65, 0.85),     # strike - pink
+	Color(1.0, 0.87, 0.45),     # amaze  - gold
+	Color(0.78, 0.66, 1.0),     # top    - purple
+]
+
+## The background palette, walked one step at a time. Each streak takes the
+## next colour and the backdrop keeps it -- it never returns to the default
+## mid-run -- so the screen reads as a record of how the run has gone.
+const COMBO_FLOW := [
+	Color(0.231, 0.435, 0.878),  # blue
+	Color(0.925, 0.282, 0.600),  # pink
+	Color(0.961, 0.702, 0.004),  # gold
+	Color(0.545, 0.361, 0.965),  # purple
+]
+
+## Only the pink step showers flowers; the rest use plain confetti chips.
+const COMBO_FLOW_FLOWERS := [false, true, false, false]
+
+## The banner currently on screen, replaced rather than stacked when clears
+## land back to back.
+var _banner: Label = null
+## The floating points label, also replaced rather than stacked -- an older one
+## drifting upward would otherwise sail through the banner.
+var _points: Label = null
 
 
 ## `rows` and `cols` are index lists; `extent` is the board's pixel size.
@@ -143,6 +178,44 @@ func explode_bomb(at: Vector2, region: Rect2, cell: float) -> void:
 	ball.finished.connect(ball.queue_free)
 
 
+## Twin beams down the row and column a laser burned through.
+func laser_beam(at: Vector2i, extent: float, cell: float) -> void:
+	var beam := Color(1, 0.95, 0.55)
+	var row := Rect2(0.0, at.y * cell, extent, cell)
+	var col := Rect2(at.x * cell, 0.0, cell, extent)
+
+	_core_flash(row, 1.8, beam, true, 1.35)
+	_core_flash(col, 1.8, beam, false, 1.35)
+	_sparks(row, 2.2)
+	_sparks(col, 2.2)
+	_debris(row, 1.6, beam)
+	_debris(col, 1.6, beam)
+	_shockwave((Vector2(at) + Vector2(0.5, 0.5)) * cell, extent * 0.9, 2.0)
+
+
+## A downward sweep across the board as everything settles after a morph.
+func morph_sweep(extent: float, color: Color) -> void:
+	var band := Rect2(0.0, 0.0, extent, extent)
+	_core_flash(band, 1.0, color, true, 1.02)
+
+	var burst: CPUParticles2D = ComboBurst.instantiate()
+	add_child(burst)
+	burst.position = Vector2(extent * 0.5, 0.0)
+	burst.emission_rect_extents = Vector2(extent * 0.5, 8.0)
+	burst.amount = 90
+	burst.lifetime = 0.9
+	burst.direction = Vector2(0, 1)
+	burst.spread = 18.0
+	burst.gravity = Vector2(0, extent * 2.2)
+	burst.initial_velocity_min = extent * 0.5
+	burst.initial_velocity_max = extent * 1.6
+	burst.scale_amount_min = 6.0
+	burst.scale_amount_max = 16.0
+	burst.color = color
+	burst.emitting = true
+	burst.finished.connect(burst.queue_free)
+
+
 ## A soft puff at each cell a piece just landed on. Deliberately small: this
 ## fires on every placement, so anything louder would wear thin fast.
 func place_puff(cells: Array, cell: float, color: Color) -> void:
@@ -197,7 +270,134 @@ func _curtain(area: Vector2) -> void:
 	fall.finished.connect(fall.queue_free)
 
 
+## Colour at a given step of the flow, wrapping round the end.
+static func flow_color(step: int) -> Color:
+	return COMBO_FLOW[posmod(step, COMBO_FLOW.size())]
+
+
+static func flow_has_flowers(step: int) -> bool:
+	return COMBO_FLOW_FLOWERS[posmod(step, COMBO_FLOW.size())]
+
+
+## Ambient shower behind the board for a combo. Drifts upward from the bottom
+## of the screen so it reads as atmosphere rather than another explosion.
+## `combo` only sets the intensity; the colour comes from the flow.
+func combo_atmosphere(tint: Color, flowers: bool, combo: int, area: Vector2) -> void:
+	var tier: int = clampi(combo - 1, 0, 4)
+	var burst: CPUParticles2D = ComboBurst.instantiate()
+	add_child(burst)
+	burst.position = Vector2(area.x * 0.5, area.y + 40.0)
+	burst.emission_rect_extents = Vector2(area.x * 0.5, 30.0)
+	burst.amount = 60 + tier * 22
+	burst.initial_velocity_min = area.y * 0.20
+	burst.initial_velocity_max = area.y * 0.62
+	burst.gravity = Vector2(0, -area.y * 0.05)
+	burst.color = tint.lightened(0.25)
+
+	if flowers:
+		# Flowers are a sprite, so they need to be smaller and spin lazily.
+		burst.texture = FlowerTexture
+		burst.scale_amount_min = 0.45
+		burst.scale_amount_max = 1.0
+		burst.angular_velocity_min = -90.0
+		burst.angular_velocity_max = 90.0
+	else:
+		burst.scale_amount_min = 8.0 + tier * 2.0
+		burst.scale_amount_max = 20.0 + tier * 4.0
+
+	burst.emitting = true
+	burst.finished.connect(burst.queue_free)
+
+
+static func combo_word(combo: int) -> String:
+	return COMBO_WORDS[clampi(combo - 1, 0, COMBO_WORDS.size() - 1)]
+
+
+## Big centre-screen call-out for a combo. Punches in, holds, then drifts off.
+## Higher rungs are larger, hotter and kick harder.
+func combo_banner(combo: int, at: Vector2) -> void:
+	var tier: int = clampi(combo - 1, 0, COMBO_WORDS.size() - 1)
+	_banner_text(COMBO_WORDS[tier], COMBO_COLORS[tier], COMBO_SIZES[tier],
+		float(tier) / float(COMBO_WORDS.size() - 1), at)
+
+
+## The same treatment with explicit words, for the power pieces -- they are not
+## combo rungs but deserve the same weight on screen.
+func combo_banner_text(text: String, color: Color) -> void:
+	_banner_text(text, color, 112, 0.55, get_viewport_rect().size * Vector2(0.5, 0.46))
+
+
+func _banner_text(text: String, color: Color, size: int, strength: float, at: Vector2) -> void:
+	if is_instance_valid(_banner):
+		_banner.queue_free()
+
+	var label := Label.new()
+	_banner = label
+	label.text = text
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 0.95))
+	label.add_theme_constant_override("outline_size", int(14 + strength * 12))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(label)
+
+	await get_tree().process_frame
+	if not is_instance_valid(label):
+		return
+
+	# A Label outside a container keeps size (0,0) until told otherwise, so the
+	# width test below would never fire without this.
+	label.reset_size()
+
+	# The longest words overrun a phone's width at the largest sizes. The cap
+	# has to account for the punch, not just the resting size, or the overshoot
+	# pushes the ends back off screen.
+	var kick: float = 1.12 + strength * 0.16
+	var max_width: float = get_viewport_rect().size.x * 0.92
+	var fit: float = 1.0
+	if label.size.x > 0.0:
+		fit = minf(1.0, max_width / (label.size.x * kick))
+
+	label.position = at - label.size * 0.5
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2.ONE * (0.45 * fit)
+	label.rotation = deg_to_rad(-6.0 * strength)
+	label.modulate.a = 0.0
+
+	var overshoot: float = kick * fit
+	var hold: float = 0.30 + strength * 0.25
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "scale", Vector2.ONE * overshoot, 0.13) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(label, "rotation", 0.0, 0.20) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(label, "modulate:a", 1.0, 0.10)
+
+	tween.chain().tween_property(label, "scale", Vector2.ONE * fit, 0.12) \
+		.set_ease(Tween.EASE_OUT)
+	tween.chain().tween_interval(hold)
+	tween.chain().tween_property(label, "position:y", label.position.y - 90.0, 0.34) \
+		.set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.34)
+	tween.chain().tween_callback(label.queue_free)
+
+
+## Like popup(), but only one is ever on screen.
+func points_popup(text: String, at: Vector2, color: Color, big: bool) -> void:
+	if is_instance_valid(_points):
+		_points.queue_free()
+	_points = _make_popup(text, color, big)
+	await _float_popup(_points, at)
+
+
 func popup(text: String, at: Vector2, color: Color, big: bool) -> void:
+	await _float_popup(_make_popup(text, color, big), at)
+
+
+func _make_popup(text: String, color: Color, big: bool) -> Label:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 84 if big else 58)
@@ -207,10 +407,15 @@ func popup(text: String, at: Vector2, color: Color, big: bool) -> void:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
+	return label
+
+
+func _float_popup(label: Label, at: Vector2) -> void:
 	# Centre on the requested point once the label knows its own size.
 	await get_tree().process_frame
 	if not is_instance_valid(label):
 		return
+	label.reset_size()
 	label.position = at - label.size * 0.5
 	label.pivot_offset = label.size * 0.5
 	label.scale = Vector2(0.4, 0.4)

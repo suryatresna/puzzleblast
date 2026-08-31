@@ -1,11 +1,12 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene format=3 uid="uid://bjivhxjijau7"]
 
-[ext_resource type="Script" path="res://scenes/game.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://vnpywtiyxh2l" path="res://scenes/game.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
-[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
-[ext_resource type="Script" path="res://scripts/board.gd" id="4_board"]
-[ext_resource type="Script" path="res://scripts/effects.gd" id="5_fx"]
-[ext_resource type="Script" path="res://scripts/piece_view.gd" id="6_piece"]
+[ext_resource type="Script" uid="uid://bd2hba6lqsiyr" path="res://scripts/safe_area_margin.gd" id="3_safe"]
+[ext_resource type="Script" uid="uid://b5dxdaixicfo0" path="res://scripts/board.gd" id="4_board"]
+[ext_resource type="Script" uid="uid://b52ysk86xobx7" path="res://scripts/effects.gd" id="5_fx"]
+[ext_resource type="Script" uid="uid://3p5h12mv8h6x" path="res://scripts/piece_view.gd" id="6_piece"]
+[ext_resource type="Script" uid="uid://cc6yn4r3ql0in" path="res://scripts/score_counter.gd" id="7_counter"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
 content_margin_left = 26.0
@@ -35,7 +36,7 @@ corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
 
-[node name="Game" type="Control"]
+[node name="Game" type="Control" unique_id=250239038]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -45,10 +46,12 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_script")
 
-[node name="Background" parent="." instance=ExtResource("2_bg")]
+[node name="Background" parent="." unique_id=659200171 instance=ExtResource("2_bg")]
+unique_name_in_owner = true
 layout_mode = 1
 
-[node name="SafeArea" type="MarginContainer" parent="."]
+[node name="ComboAura" type="ColorRect" parent="." unique_id=1046284306]
+unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -56,124 +59,126 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="ComboParticles" type="Node2D" parent="." unique_id=231948079]
+unique_name_in_owner = true
+script = ExtResource("5_fx")
+
+[node name="SafeArea" type="MarginContainer" parent="." unique_id=786581793]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 32
 script = ExtResource("3_safe")
 base_margin = 32
 
-[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+[node name="Layout" type="VBoxContainer" parent="SafeArea" unique_id=2146452807]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 22
 
-[node name="TopBar" type="HBoxContainer" parent="SafeArea/Layout"]
+[node name="TopBar" type="HBoxContainer" parent="SafeArea/Layout" unique_id=1988430382]
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="PauseButton" type="Button" parent="SafeArea/Layout/TopBar"]
+[node name="PauseButton" type="Button" parent="SafeArea/Layout/TopBar" unique_id=1153939890]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_font_sizes/font_size = 34
 text = "❚❚"
 
-[node name="Stats" type="HBoxContainer" parent="SafeArea/Layout/TopBar"]
+[node name="Spacer" type="Control" parent="SafeArea/Layout/TopBar" unique_id=1349090678]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12
+mouse_filter = 2
 
-[node name="ScoreBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
-
-[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/ScoreBox"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/ScoreBox/V"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
-theme_override_font_sizes/font_size = 24
-text = "SCORE"
-horizontal_alignment = 1
-
-[node name="ScoreValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/ScoreBox/V"]
+[node name="ComboBox" type="PanelContainer" parent="SafeArea/Layout/TopBar" unique_id=829957142]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 46
-text = "0"
-horizontal_alignment = 1
-
-[node name="BestBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
-layout_mode = 2
-size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
 
-[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/BestBox"]
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/ComboBox" unique_id=49069994]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/BestBox/V"]
+[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/ComboBox/V" unique_id=1050351233]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
-theme_override_font_sizes/font_size = 24
-text = "BEST"
-horizontal_alignment = 1
-
-[node name="BestValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/BestBox/V"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 40
-text = "0"
-horizontal_alignment = 1
-
-[node name="ComboBox" type="PanelContainer" parent="SafeArea/Layout/TopBar/Stats"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
-
-[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/Stats/ComboBox"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="Key" type="Label" parent="SafeArea/Layout/TopBar/Stats/ComboBox/V"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 22
 text = "COMBO"
 horizontal_alignment = 1
 
-[node name="ComboValue" type="Label" parent="SafeArea/Layout/TopBar/Stats/ComboBox/V"]
+[node name="ComboValue" type="Label" parent="SafeArea/Layout/TopBar/ComboBox/V" unique_id=1147526614]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 38
 text = "x1"
 horizontal_alignment = 1
 
+[node name="ScoreHeader" type="VBoxContainer" parent="SafeArea/Layout" unique_id=750745814]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
 
-[node name="BoardArea" type="AspectRatioContainer" parent="SafeArea/Layout"]
+[node name="ScoreSlot" type="Control" parent="SafeArea/Layout/ScoreHeader" unique_id=602922979]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ScoreValue" type="Label" parent="SafeArea/Layout/ScoreHeader/ScoreSlot" unique_id=1290500783]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.945, 0.941, 1, 1)
+theme_override_font_sizes/font_size = 128
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("7_counter")
+
+[node name="BestValue" type="Label" parent="SafeArea/Layout/ScoreHeader" unique_id=1609794223]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_override_font_sizes/font_size = 30
+text = "best 0"
+horizontal_alignment = 1
+
+[node name="BoardArea" type="AspectRatioContainer" parent="SafeArea/Layout" unique_id=1747627127]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
-ratio = 1.0
-stretch_mode = 2
 
-[node name="Board" type="Control" parent="SafeArea/Layout/BoardArea"]
+[node name="Board" type="Control" parent="SafeArea/Layout/BoardArea" unique_id=1557261060]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("4_board")
 
-[node name="Effects" type="Node2D" parent="SafeArea/Layout/BoardArea/Board"]
+[node name="Effects" type="Node2D" parent="SafeArea/Layout/BoardArea/Board" unique_id=653994904]
 unique_name_in_owner = true
 script = ExtResource("5_fx")
 
-
-[node name="Tray" type="HBoxContainer" parent="SafeArea/Layout"]
+[node name="Tray" type="HBoxContainer" parent="SafeArea/Layout" unique_id=1496660764]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
-[node name="Slot0" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+[node name="Slot0" type="PanelContainer" parent="SafeArea/Layout/Tray" unique_id=2113210231]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -181,12 +186,12 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 
-[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot0"]
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot0" unique_id=271957170]
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("6_piece")
 
-[node name="Slot1" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+[node name="Slot1" type="PanelContainer" parent="SafeArea/Layout/Tray" unique_id=1701196469]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -194,12 +199,12 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 
-[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot1"]
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot1" unique_id=1746150887]
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("6_piece")
 
-[node name="Slot2" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+[node name="Slot2" type="PanelContainer" parent="SafeArea/Layout/Tray" unique_id=1480303384]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -207,12 +212,12 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 
-[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot2"]
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot2" unique_id=663567190]
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("6_piece")
 
-[node name="Slot3" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+[node name="Slot3" type="PanelContainer" parent="SafeArea/Layout/Tray" unique_id=1892384447]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -220,12 +225,12 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 
-[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot3"]
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot3" unique_id=76039185]
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("6_piece")
 
-[node name="Slot4" type="PanelContainer" parent="SafeArea/Layout/Tray"]
+[node name="Slot4" type="PanelContainer" parent="SafeArea/Layout/Tray" unique_id=1066034142]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
@@ -233,21 +238,20 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
 
-[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot4"]
+[node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot4" unique_id=1042283912]
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("6_piece")
 
-[node name="Hint" type="Label" parent="SafeArea/Layout"]
+[node name="Hint" type="Label" parent="SafeArea/Layout" unique_id=378584171]
 layout_mode = 2
-mouse_filter = 2
 theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 0.65)
 theme_override_font_sizes/font_size = 26
 text = "drag a card onto the board  ·  fill a row or column to clear it"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="PausePanel" type="Control" parent="."]
+[node name="PausePanel" type="Control" parent="." unique_id=1756355420]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -256,7 +260,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Dim" type="ColorRect" parent="PausePanel"]
+[node name="Dim" type="ColorRect" parent="PausePanel" unique_id=1148644676]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -265,7 +269,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.02, 0.018, 0.055, 0.82)
 
-[node name="Center" type="CenterContainer" parent="PausePanel"]
+[node name="Center" type="CenterContainer" parent="PausePanel" unique_id=388687165]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -273,33 +277,33 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Box" type="VBoxContainer" parent="PausePanel/Center"]
+[node name="Box" type="VBoxContainer" parent="PausePanel/Center" unique_id=569766954]
 custom_minimum_size = Vector2(620, 0)
 layout_mode = 2
 theme_override_constants/separation = 26
 
-[node name="Title" type="Label" parent="PausePanel/Center/Box"]
+[node name="Title" type="Label" parent="PausePanel/Center/Box" unique_id=76349894]
 layout_mode = 2
 theme_override_font_sizes/font_size = 76
 text = "Paused"
 horizontal_alignment = 1
 
-[node name="ResumeButton" type="Button" parent="PausePanel/Center/Box"]
+[node name="ResumeButton" type="Button" parent="PausePanel/Center/Box" unique_id=782752936]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Resume"
 
-[node name="RestartButton" type="Button" parent="PausePanel/Center/Box"]
+[node name="RestartButton" type="Button" parent="PausePanel/Center/Box" unique_id=51796956]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Restart"
 
-[node name="QuitButton" type="Button" parent="PausePanel/Center/Box"]
+[node name="QuitButton" type="Button" parent="PausePanel/Center/Box" unique_id=726981474]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Main Menu"
 
-[node name="GameOverPanel" type="Control" parent="."]
+[node name="GameOverPanel" type="Control" parent="." unique_id=1991292481]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -308,7 +312,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Dim" type="ColorRect" parent="GameOverPanel"]
+[node name="Dim" type="ColorRect" parent="GameOverPanel" unique_id=52090722]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -317,7 +321,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.02, 0.018, 0.055, 0.86)
 
-[node name="Center" type="CenterContainer" parent="GameOverPanel"]
+[node name="Center" type="CenterContainer" parent="GameOverPanel" unique_id=1588877207]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -325,12 +329,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Box" type="VBoxContainer" parent="GameOverPanel/Center"]
+[node name="Box" type="VBoxContainer" parent="GameOverPanel/Center" unique_id=1021577610]
 custom_minimum_size = Vector2(620, 0)
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Title" type="Label" parent="GameOverPanel/Center/Box"]
+[node name="Title" type="Label" parent="GameOverPanel/Center/Box" unique_id=1788398398]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.984, 0.443, 0.522, 1)
 theme_override_font_sizes/font_size = 72
@@ -338,14 +342,14 @@ text = "No Moves Left"
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="FinalScore" type="Label" parent="GameOverPanel/Center/Box"]
+[node name="FinalScore" type="Label" parent="GameOverPanel/Center/Box" unique_id=1912087702]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 96
 text = "0"
 horizontal_alignment = 1
 
-[node name="FinalBest" type="Label" parent="GameOverPanel/Center/Box"]
+[node name="FinalBest" type="Label" parent="GameOverPanel/Center/Box" unique_id=1598619727]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
@@ -353,39 +357,39 @@ theme_override_font_sizes/font_size = 34
 text = "best  0"
 horizontal_alignment = 1
 
-[node name="RankLabel" type="Label" parent="GameOverPanel/Center/Box"]
+[node name="RankLabel" type="Label" parent="GameOverPanel/Center/Box" unique_id=1703820189]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.83, 0.32, 1)
 theme_override_font_sizes/font_size = 38
-text = ""
 horizontal_alignment = 1
 
-[node name="Gap" type="Control" parent="GameOverPanel/Center/Box"]
+[node name="Gap" type="Control" parent="GameOverPanel/Center/Box" unique_id=1871609458]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 
-[node name="RetryButton" type="Button" parent="GameOverPanel/Center/Box"]
+[node name="RetryButton" type="Button" parent="GameOverPanel/Center/Box" unique_id=1169729118]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Play Again"
 
-[node name="ScoresButton" type="Button" parent="GameOverPanel/Center/Box"]
+[node name="ScoresButton" type="Button" parent="GameOverPanel/Center/Box" unique_id=584425167]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Leaderboard"
 
-[node name="MenuButton" type="Button" parent="GameOverPanel/Center/Box"]
+[node name="MenuButton" type="Button" parent="GameOverPanel/Center/Box" unique_id=2137574887]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Main Menu"
 
-[node name="OverlayEffects" type="Node2D" parent="."]
+[node name="OverlayEffects" type="Node2D" parent="." unique_id=1181427940]
 unique_name_in_owner = true
 script = ExtResource("5_fx")
 
-[node name="DragView" type="Control" parent="."]
+[node name="DragView" type="Control" parent="." unique_id=408598378]
 unique_name_in_owner = true
 layout_mode = 1
+anchors_preset = 0
 mouse_filter = 2
 script = ExtResource("6_piece")

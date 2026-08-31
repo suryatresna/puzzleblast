@@ -67,11 +67,11 @@ func _draw() -> void:
 	_style.set_corner_radius_all(int(cell * 0.2))
 	_style.set_border_width_all(maxi(1, int(cell * 0.06)))
 
-	var bomb: bool = Blocks.is_bomb(piece)
+	var power: Blocks.Power = Blocks.power_of(piece)
 	var inset := cell * 0.06
 	for c: Vector2i in piece["cells"]:
 		var p := origin + Vector2(c) * cell + Vector2(inset, inset)
 		var rect := Rect2(p, Vector2(cell - inset * 2.0, cell - inset * 2.0))
 		draw_style_box(_style, rect)
-		if bomb:
-			Blocks.draw_bomb(self, rect)
+		if power != Blocks.Power.NONE:
+			Blocks.draw_power(self, rect, power)
