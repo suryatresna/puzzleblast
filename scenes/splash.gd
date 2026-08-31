@@ -15,7 +15,7 @@ var _leaving := false
 
 func _ready() -> void:
 	# Taken from project settings so the name lives in exactly one place.
-	_title.text = App.game_name
+	_title.text = App.game_wordmark()
 	_content.modulate.a = 0.0
 	_loading_bar.scale.x = 0.0
 

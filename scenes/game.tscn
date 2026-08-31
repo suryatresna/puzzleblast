@@ -8,34 +8,6 @@
 [ext_resource type="Script" uid="uid://3p5h12mv8h6x" path="res://scripts/piece_view.gd" id="6_piece"]
 [ext_resource type="Script" uid="uid://cc6yn4r3ql0in" path="res://scripts/score_counter.gd" id="7_counter"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
-content_margin_left = 26.0
-content_margin_top = 14.0
-content_margin_right = 26.0
-content_margin_bottom = 14.0
-bg_color = Color(0.11, 0.098, 0.243, 0.66)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.486, 0.424, 0.941, 0.26)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slot"]
-bg_color = Color(0.08, 0.07, 0.18, 0.5)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.486, 0.424, 0.941, 0.18)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
-
 [node name="Game" type="Control" unique_id=250239038]
 layout_mode = 3
 anchors_preset = 15
@@ -78,7 +50,7 @@ theme_override_constants/margin_top = 32
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 32
 script = ExtResource("3_safe")
-base_margin = 32
+base_margin = 28
 
 [node name="Layout" type="VBoxContainer" parent="SafeArea" unique_id=2146452807]
 layout_mode = 2
@@ -105,7 +77,7 @@ mouse_filter = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
-theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
+theme_type_variation = &"HudPanel"
 
 [node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/ComboBox" unique_id=49069994]
 layout_mode = 2
@@ -113,7 +85,7 @@ theme_override_constants/separation = 0
 
 [node name="Key" type="Label" parent="SafeArea/Layout/TopBar/ComboBox/V" unique_id=1050351233]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 22
 text = "COMBO"
 horizontal_alignment = 1
@@ -143,7 +115,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.945, 0.941, 1, 1)
+theme_type_variation = &"TitleLabel"
 theme_override_font_sizes/font_size = 128
 text = "0"
 horizontal_alignment = 1
@@ -153,7 +125,7 @@ script = ExtResource("7_counter")
 [node name="BestValue" type="Label" parent="SafeArea/Layout/ScoreHeader" unique_id=1609794223]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 30
 text = "best 0"
 horizontal_alignment = 1
@@ -184,7 +156,7 @@ custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+theme_type_variation = &"SlotPanel"
 
 [node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot0" unique_id=271957170]
 layout_mode = 2
@@ -197,7 +169,7 @@ custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+theme_type_variation = &"SlotPanel"
 
 [node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot1" unique_id=1746150887]
 layout_mode = 2
@@ -210,7 +182,7 @@ custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+theme_type_variation = &"SlotPanel"
 
 [node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot2" unique_id=663567190]
 layout_mode = 2
@@ -223,7 +195,7 @@ custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+theme_type_variation = &"SlotPanel"
 
 [node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot3" unique_id=76039185]
 layout_mode = 2
@@ -236,7 +208,7 @@ custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_slot")
+theme_type_variation = &"SlotPanel"
 
 [node name="View" type="Control" parent="SafeArea/Layout/Tray/Slot4" unique_id=1042283912]
 layout_mode = 2
@@ -245,7 +217,7 @@ script = ExtResource("6_piece")
 
 [node name="Hint" type="Label" parent="SafeArea/Layout" unique_id=378584171]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 0.65)
+theme_type_variation = &"FaintLabel"
 theme_override_font_sizes/font_size = 26
 text = "drag a card onto the board  ·  fill a row or column to clear it"
 horizontal_alignment = 1
@@ -336,7 +308,7 @@ theme_override_constants/separation = 18
 
 [node name="Title" type="Label" parent="GameOverPanel/Center/Box" unique_id=1788398398]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.984, 0.443, 0.522, 1)
+theme_type_variation = &"DangerLabel"
 theme_override_font_sizes/font_size = 72
 text = "No Moves Left"
 horizontal_alignment = 1
@@ -352,7 +324,7 @@ horizontal_alignment = 1
 [node name="FinalBest" type="Label" parent="GameOverPanel/Center/Box" unique_id=1598619727]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 34
 text = "best  0"
 horizontal_alignment = 1
@@ -360,7 +332,7 @@ horizontal_alignment = 1
 [node name="RankLabel" type="Label" parent="GameOverPanel/Center/Box" unique_id=1703820189]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.83, 0.32, 1)
+theme_type_variation = &"HighlightLabel"
 theme_override_font_sizes/font_size = 38
 horizontal_alignment = 1
 

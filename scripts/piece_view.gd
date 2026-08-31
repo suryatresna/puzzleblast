@@ -27,6 +27,7 @@ var _style := StyleBoxFlat.new()
 
 func _ready() -> void:
 	resized.connect(queue_redraw)
+	Themes.theme_changed.connect(func(_id: int) -> void: queue_redraw())
 
 
 ## Pixel size the piece will occupy at the current cell size.
@@ -59,7 +60,7 @@ func _draw() -> void:
 	if fixed_cell <= 0.0:
 		origin = (size - Vector2(span) * cell) * 0.5
 
-	var color: Color = Blocks.COLORS[piece["color"]]
+	var color: Color = Themes.palette()[int(piece["color"])]
 	if dimmed:
 		color = color.darkened(0.55)
 	_style.bg_color = color
@@ -68,10 +69,21 @@ func _draw() -> void:
 	_style.set_border_width_all(maxi(1, int(cell * 0.06)))
 
 	var power: Blocks.Power = Blocks.power_of(piece)
-	var inset := cell * 0.06
+	var pixel := Themes.is_pixel()
+	var tile: Texture2D = Themes.tile_texture() if pixel else null
+	var glyph: Texture2D = Themes.glyph_texture(power) if pixel else null
+	var inset := 0.0 if pixel else cell * 0.06
 	for c: Vector2i in piece["cells"]:
 		var p := origin + Vector2(c) * cell + Vector2(inset, inset)
 		var rect := Rect2(p, Vector2(cell - inset * 2.0, cell - inset * 2.0))
-		draw_style_box(_style, rect)
-		if power != Blocks.Power.NONE:
+		if tile != null:
+			draw_texture_rect(tile, rect, false, color)
+		else:
+			draw_style_box(_style, rect)
+		if power == Blocks.Power.NONE:
+			continue
+		if glyph != null:
+			draw_texture_rect(glyph, rect, false,
+				Color(1, 1, 1, 0.55 if dimmed else 1.0))
+		else:
 			Blocks.draw_power(self, rect, power)

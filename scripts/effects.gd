@@ -270,9 +270,13 @@ func _curtain(area: Vector2) -> void:
 	fall.finished.connect(fall.queue_free)
 
 
-## Colour at a given step of the flow, wrapping round the end.
+## Colour at a given step of the flow, wrapping round the end. The active
+## theme supplies the palette; COMBO_FLOW is the fallback.
 static func flow_color(step: int) -> Color:
-	return COMBO_FLOW[posmod(step, COMBO_FLOW.size())]
+	var flow: Array = Themes.value("combo_flow", COMBO_FLOW)
+	if flow.is_empty():
+		flow = COMBO_FLOW
+	return flow[posmod(step, flow.size())]
 
 
 static func flow_has_flowers(step: int) -> bool:
@@ -336,7 +340,7 @@ func _banner_text(text: String, color: Color, size: int, strength: float, at: Ve
 	label.text = text
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 0.95))
+	label.add_theme_color_override("font_outline_color", Themes.text_color("outline"))
 	label.add_theme_constant_override("outline_size", int(14 + strength * 12))
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -402,7 +406,7 @@ func _make_popup(text: String, color: Color, big: bool) -> Label:
 	label.text = text
 	label.add_theme_font_size_override("font_size", 84 if big else 58)
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06, 0.9))
+	label.add_theme_color_override("font_outline_color", Themes.text_color("outline"))
 	label.add_theme_constant_override("outline_size", 12)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE

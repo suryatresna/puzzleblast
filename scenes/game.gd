@@ -32,6 +32,7 @@ const DEAL_TIME := 0.34
 
 ## Colours for the combo badge: muted with no streak running, gold once the
 ## multiplier is actually worth something.
+## Fallbacks only -- see `_combo_color`, which reads the active theme.
 const COMBO_IDLE := Color(0.651, 0.635, 0.8)
 const COMBO_HOT := Color(1, 0.83, 0.32)
 
@@ -127,6 +128,7 @@ func _refill_tray() -> void:
 ## `_tray` is already filled by the time this starts, so the caller's
 ## "any moves left?" check never sees a half-dealt tray.
 func _deal_animation() -> void:
+	Audio.play("deal")
 	_kill_deal_tweens()
 	# The slots have no size until the container has laid them out, which has
 	# not happened yet on the very first hand.
@@ -396,15 +398,15 @@ func _show_combo(combo: int) -> void:
 	var label: Label = %ComboValue
 	if combo >= 2:
 		label.text = "x%d" % combo
-		label.add_theme_color_override("font_color", COMBO_HOT)
+		label.add_theme_color_override("font_color", Themes.text_color("highlight"))
 		%ComboBox.modulate.a = 1.0
 	elif combo == 1:
 		label.text = "x1"
-		label.add_theme_color_override("font_color", COMBO_IDLE)
+		label.add_theme_color_override("font_color", Themes.text_color("muted"))
 		%ComboBox.modulate.a = 0.8
 	else:
 		label.text = "--"
-		label.add_theme_color_override("font_color", COMBO_IDLE)
+		label.add_theme_color_override("font_color", Themes.text_color("muted"))
 		%ComboBox.modulate.a = 0.45
 
 	# Only punch when the streak actually grew, not on every score change.
@@ -452,12 +454,20 @@ func _celebrate_best() -> void:
 
 ## Every landing gets a small puff so placing a piece feels like it connects.
 func _on_piece_placed(cells: Array, color_index: int) -> void:
+	Audio.play("place")
 	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
 	_shake = maxf(_shake, 2.5)
 	Haptics.place()
 
 
 func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) -> void:
+	# Combo raises the pitch so a streak reads as one rising phrase.
+	var step: int = clampi(_board.combo - 1, 0, 4)
+	if _board.combo >= 2:
+		Audio.play("combo", 1.0 + step * 0.08)
+	else:
+		Audio.play("clear")
+
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
 	var line_count: int = rows.size() + cols.size()
@@ -487,6 +497,7 @@ func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) 
 ## Every finished run goes on the leaderboard, whether or not it placed.
 func _on_bomb_detonated(at: Vector2i, from_row: int, to_row: int,
 		cleared: int, points: int) -> void:
+	Audio.play("bomb")
 	var cell: float = _board.cell_size()
 	var region := Rect2(0.0, from_row * cell, _board.size.x, (to_row - from_row + 1) * cell)
 	var centre := (Vector2(at) + Vector2(0.5, 0.5)) * cell
@@ -506,6 +517,7 @@ func _on_bomb_detonated(at: Vector2i, from_row: int, to_row: int,
 
 
 func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
+	Audio.play("laser")
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
 	_effects.laser_beam(at, extent, cell)
@@ -519,6 +531,7 @@ func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
 
 
 func _on_board_morphed(dropped: int) -> void:
+	Audio.play("collapse")
 	_effects.morph_sweep(_board.size.x, Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
 	_overlay.combo_banner_text("COLLAPSE!", Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
 	_shake = 6.0 + mini(dropped, 20) * 0.8
@@ -527,6 +540,7 @@ func _on_board_morphed(dropped: int) -> void:
 
 
 func _on_piece_fitted(cells: Array, color_index: int) -> void:
+	Audio.play("fit")
 	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
 	_overlay.combo_banner_text("FIT!", Blocks.COLORS[color_index])
 	_shake = 5.0
@@ -535,6 +549,9 @@ func _on_piece_fitted(cells: Array, color_index: int) -> void:
 
 
 func _on_game_over() -> void:
+	# The GameOver track replaces the bed for the whole end-of-run panel; a
+	# one-shot effect on top of it would just muddy the jingle.
+	Audio.play_game_over()
 	Haptics.stop()               # nothing should still be buzzing on game over
 	var rank: int = Scores.submit(_board.score, _board.lines, Difficulty.peak_name())
 	_board.best = Scores.best()

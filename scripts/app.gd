@@ -28,6 +28,11 @@ var _transitioning := false
 
 
 func _ready() -> void:
+	Themes.theme_changed.connect(_on_theme_changed)
+	# The first scene is loaded by the engine, so set its bed here.
+	Audio.play_music.call_deferred(_playlist_for(SCENE_SPLASH))
+	# The first scene is loaded by the engine, not by goto_scene.
+	apply_theme.call_deferred()
 	# Above every screen, and still animating if the tree is ever paused.
 	layer = 128
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -55,6 +60,11 @@ func goto_scene(path: String) -> void:
 	# change_scene_to_file is deferred; let the swap land before revealing it.
 	await get_tree().process_frame
 	await get_tree().process_frame
+	apply_theme()
+	# Each screen picks its bed: the play screen shuffles the whole library,
+	# everything else runs the short menu rotation. Also what brings music
+	# back after a game-over stinger.
+	Audio.play_music(_playlist_for(path))
 
 	await _fade_to(0.0)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -85,3 +95,30 @@ func _fade_to(alpha: float) -> void:
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(_fade, "color:a", alpha, FADE_DURATION)
 	await tween.finished
+
+
+## Pushes the active theme's UI resource onto the current scene root. Godot
+## propagates a Control's theme down the tree, so setting it on the root is
+## enough -- per-node overrides in a scene still win, which is why screens
+## avoid them (see the layout conventions in CLAUDE.md).
+func apply_theme() -> void:
+	var root := get_tree().current_scene as Control
+	if root == null:
+		return
+	var ui := Themes.ui_theme()
+	if ui != null:
+		root.theme = ui
+
+
+func _on_theme_changed(_id: int) -> void:
+	apply_theme()
+
+
+## The game name as the title screens draw it: upper case, one word per line.
+## Derived from the project name so a rename carries through.
+func game_wordmark() -> String:
+	return "\n".join(Array(game_name.to_upper().split(" ", false)))
+
+
+func _playlist_for(path: String) -> int:
+	return Audio.List.GAME if path == SCENE_GAME else Audio.List.MENU

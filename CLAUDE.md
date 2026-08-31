@@ -90,6 +90,8 @@ Frames are named `f00000000.png`. The game auto-pauses on focus loss (see `_noti
 
 - **`App`** (`scripts/app.gd`) — a `CanvasLayer` at layer 128 owning scene routing and the fade overlay. Always navigate with `App.goto_scene(App.SCENE_*)`; it drops re-entrant calls so a double-tap cannot load two scenes. Also exposes `game_name` / `game_version` read from project settings.
 - **`Scores`** (`scripts/scores.gd`) — the local leaderboard, top 10, persisted to `user://scores.cfg`. Single source of truth for the best score; nothing else should write a save file.
+- **`Themes`** (`scripts/themes.gd`) — the theme registry. See **Theming** below.
+- **`Audio`** (`scripts/audio.gd`) — a shuffled music playlist and sound effects. Two beds, picked per screen by `App._playlist_for()`: a fixed menu rotation (4 plays per track) and a shuffled in-game list (5 plays per track). Tracks are scanned from `audio/music/` at runtime and named in `snake_case`; `game_over` is held back and played when a run ends. Effect streams are cached, music streams are not — the library is tens of megabytes and only one track plays at a time. Owns the `[audio]` section of `user://settings.cfg`. Effects resolve by name against `.wav`/`.ogg`/`.mp3`, so assets can be replaced without code changes — see `audio/README.md`. It starts its own music in `_ready()` rather than being started by `App`, because autoloads run in declaration order and `App` is first.
 
 ### Game separation of concerns
 
@@ -125,6 +127,38 @@ Pointer handling lives in `_input()` on `game.gd`, not `_unhandled_input()`, bec
 - **Metal is already the renderer** on macOS and iOS — Godot 4.7 defaults `rendering_device/driver.ios` and `.macos` to `metal`. Do not add explicit driver settings; Godot strips settings equal to defaults on save.
 - The Exit menu entry is hidden on iOS, since Apple rejects apps that quit themselves.
 
+### Theming
+
+Three themes are defined — **Classic** (the original indigo look), **Pixel Warm** and **Pixel Dark** — but the active one is a **build-time constant**, `Themes.ACTIVE`, currently `PIXEL_DARK`. There is deliberately no user-facing switch and the choice is not persisted; to re-theme the game, change that one line. `Themes.set_current()` exists only for the theme generator and tests.
+
+`scripts/themes.gd` is the single source of truth. A theme is one entry in `DEFS` — palette, semantic text colours, a UI theme resource, and for the pixel themes a set of sprites. **Adding a theme should need no code outside that table.**
+
+Rules that keep it that way:
+
+- **Never hardcode a colour in a scene or script.** Scenes use `theme_type_variation` (`TitleLabel`, `MutedLabel`, `FaintLabel`, `AccentLabel`, `HighlightLabel`, `DangerLabel`, `HudPanel`, `SlotPanel`, `BarTrack`, `BarFill`); scripts call `Themes.text_color(role)` or `Themes.palette()`. A `theme_override_colors/*` or `theme_override_styles/*` in a `.tscn` is a bug — it will not follow the theme.
+- Anything that caches theme values must rebuild on the `theme_changed` signal. `board.gd`, `piece_view.gd`, `background.gd` and `logo_mark.gd` all do.
+- `App.apply_theme()` pushes the UI theme onto the scene root after every swap; Godot propagates it down the tree.
+- Themes are **presentation only** — switching mid-run must never touch grid state or score.
+
+Both generated artefacts are reproducible; re-run them after changing a palette:
+
+```bash
+python3 tools/gen_pixel_sprites.py                       # ui/pixel/*.png
+"$GODOT" --headless --path . res://tools/gen_pixel_themes.tscn   # ui/theme*.tres
+```
+
+`gen_pixel_themes` reads its colours from `Themes.DEFS`, and also injects the type variations into the hand-maintained `ui/theme.tres`.
+
+**Branding.** The title mark is the design's nine tiles laid out six across, drawn at runtime by `scripts/logo_mark.gd` from the live block sprite so it follows the palette rather than being a flat image. It appears on both `splash` and `main_menu`. The wordmark is the game name stacked one word per line via `App.game_wordmark()` — derived from the project name, so a rename carries through — styled by the `WordmarkLabel` variation (accent colour plus the design's hard 12px offset shadow). The boot splash and app icon are baked from the same layout by `tools/gen_branding.py`; because Godot needs files on disk for those, they are pinned to the shipped palette and must be regenerated if `Themes.ACTIVE` changes.
+
+**Surfaces are two-stop gradients.** Every panel, button and backdrop in the design is a vertical `linear-gradient(180deg, top, bottom)`. Rather than store both stops, the nine-patch sprite carries the *ramp* and the theme names only the **top** colour — tinting reproduces the bottom stop. The ramp differs per mode (light panels fall to ~0.90 of the top, dark ones to ~0.62), which is why `panel.png` and `panel_dark.png` are separate sprites. `bg_stops` likewise stores just the design's two endpoints; `background.gd` samples that ramp at each gradient point's own offset, so a 2-stop theme and a 3-stop one both work.
+
+**Settings rows** are built in code from a table in `settings.gd`, not laid out in the `.tscn` — they are repetitive and data-driven. Three shapes: a switch row (`scripts/toggle_switch.gd`), a slider row (`scripts/segment_slider.gd`, the design's 8 discrete segments) and a read-only note card. Both controls take their geometry from the design doubled twice, and their colours from `Themes`. Cards use the `CardPanel` variation: a flat fill with a hard ink border, distinct from the gradient nine-patch the HUD and tray use.
+
+Watch the token names: `#241C16` is the dark **panel**, but the dark **board** is a step darker at `#201914`. The board also carries an ink frame outside the grid (`board_border`), which is the design's `box-shadow: 0 0 0 4px` — 4px at the mockup's 2x, so 2 logical px, 8 in our space.
+
+**Pixel geometry.** The design is 270×480 with 32px tiles; the game runs at 1080×1920, exactly 4×. Sprites are therefore generated pre-upscaled (a 32px tile is stored at 128px) rather than relying on filtering — `StyleBoxTexture` nine-patch margins are measured in texture pixels and are *not* scaled when drawn, so a 48px plate with a 12px margin would render tiny corners. `base_margin = 28` on the game screen gives a 1024px board and exactly 128px cells. Under a pixel theme `cell_size()` floors, `grid_origin()` centres the remainder, and `shake_offset` rounds to whole pixels.
+
 ### Layout conventions
 
 Screens follow: `Background` instance → `SafeArea` (`MarginContainer` + `safe_area_margin.gd`) → `Layout` VBox. Containers and decorative nodes are set `mouse_filter = 2` so clicks reach the script. Buttons and panels get their look from `ui/theme.tres`; avoid per-node style overrides unless a node genuinely differs.
@@ -135,11 +169,13 @@ Two layout traps seen in this repo:
 
 ## Dead code
 
-`scripts/playfield.gd`, `tetromino.gd`, `next_preview.gd` and `input_actions.gd` are leftovers from an earlier falling-block (Tetris) prototype. They form an orphaned island — nothing live references them — and are safe to delete. **This is not a git repository**, so deletions are unrecoverable; confirm before removing anything.
+`scripts/playfield.gd`, `tetromino.gd`, `next_preview.gd` and `input_actions.gd` are leftovers from an earlier falling-block (Tetris) prototype. They form an orphaned island — nothing live references them — and are safe to delete.
 
 ## Known gaps
 
-- No audio at all. Every moment (deal, placement, line clear, bomb, confetti) is silent.
-- `scenes/settings.tscn` is a navigable placeholder with no working options.
+- `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. The design's RESTORE PURCHASES is not built — there is no IAP.
+- Effects are still placeholders from `tools/gen_audio.py`; music is real. Confetti is silent.
+- `audio/music/theme.wav` and `audio/sfx/game_over.wav` are superseded and unreferenced.
+- Looping WAVs need `edit/loop_mode=1` in their `.import`. Setting `loop_mode` at runtime without also setting `loop_end` yields a zero-length loop: `playing` stays true, the position never advances, and the track is silent. `--headless` and Movie Maker both use the Dummy audio driver, so audio bugs only surface in a real windowed run.
 - The leaderboard is local-only; there is no backend or platform integration.
 - No export presets are configured. Note that Godot 4.7.2's iOS **simulator** slice is x86_64-only while Xcode 26 simulators are arm64-only, so the simulator cannot run this on Apple Silicon — use a physical device or the macOS build.

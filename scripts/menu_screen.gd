@@ -7,6 +7,9 @@ class_name MenuScreen
 ## their own `_ready` must call `super()`.
 
 func _ready() -> void:
+	# Every button on every menu screen clicks.
+	for b: Button in find_children("*", "Button", true, false):
+		b.pressed.connect(func() -> void: Audio.play("tap"))
 	var back := get_node_or_null("%BackButton")
 	if back:
 		back.pressed.connect(go_back)

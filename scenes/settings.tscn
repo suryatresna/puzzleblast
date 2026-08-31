@@ -11,6 +11,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_script")
 
 [node name="Background" parent="." instance=ExtResource("2_bg")]
@@ -30,49 +31,46 @@ base_margin = 56
 [node name="Layout" type="VBoxContainer" parent="SafeArea"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 26
+theme_override_constants/separation = 28
 
-[node name="BackRow" type="HBoxContainer" parent="SafeArea/Layout"]
+[node name="Header" type="HBoxContainer" parent="SafeArea/Layout"]
 layout_mode = 2
 mouse_filter = 2
+theme_override_constants/separation = 28
 
-[node name="BackButton" type="Button" parent="SafeArea/Layout/BackRow"]
+[node name="BackButton" type="Button" parent="SafeArea/Layout/Header"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 0
-theme_override_font_sizes/font_size = 38
-text = "‹  Back"
+theme_type_variation = &"IconButton"
+theme_override_font_sizes/font_size = 40
+text = "<"
 
-[node name="Title" type="Label" parent="SafeArea/Layout"]
+[node name="Title" type="Label" parent="SafeArea/Layout/Header"]
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
-theme_override_font_sizes/font_size = 72
-text = "Settings"
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 48
+theme_override_constants/line_spacing = 0
+text = "SETTINGS"
 
-[node name="DifficultyKey" type="Label" parent="SafeArea/Layout"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.133, 0.827, 0.933, 0.9)
-theme_override_font_sizes/font_size = 30
-text = "DIFFICULTY  ·  FOLLOWS YOUR SCORE"
-
-[node name="DifficultyNote" type="Label" parent="SafeArea/Layout"]
+[node name="Rows" type="VBoxContainer" parent="SafeArea/Layout"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
-theme_override_font_sizes/font_size = 26
-theme_override_constants/line_spacing = 6
-text = ""
-autowrap_mode = 2
+theme_override_constants/separation = 20
 
 [node name="Spacer" type="Control" parent="SafeArea/Layout"]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="VibrateButton" type="Button" parent="SafeArea/Layout"]
+[node name="Footer" type="Label" parent="SafeArea/Layout"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 36
-text = "Vibration:  On"
+mouse_filter = 2
+theme_type_variation = &"FaintLabel"
+theme_override_font_sizes/font_size = 24
+theme_override_constants/line_spacing = 12
+horizontal_alignment = 1
+text = ""

@@ -4,7 +4,7 @@ extends Control
 ## stub screen rather than doing nothing at all.
 
 func _ready() -> void:
-	%Title.text = App.game_name
+	%Title.text = App.game_wordmark()
 	%Version.text = "v%s" % App.game_version
 	%Best.text = "best  %d" % Scores.best() if not Scores.is_empty() else ""
 

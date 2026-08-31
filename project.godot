@@ -15,15 +15,17 @@ config/description="A pixel-art block puzzle for Android and iOS."
 config/version="0.1.0"
 run/main_scene="res://scenes/splash.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
-boot_splash/bg_color=Color(0.043, 0.039, 0.106, 1)
+boot_splash/bg_color=Color(0.09, 0.071, 0.059, 1)
 boot_splash/image="res://ui/boot_splash.png"
-config/icon="res://ui/icon.svg"
+config/icon="res://ui/icon.png"
 
 [autoload]
 
 App="*res://scripts/app.gd"
 Scores="*res://scripts/scores.gd"
 Difficulty="*res://scripts/difficulty.gd"
+Themes="*res://scripts/themes.gd"
+Audio="*res://scripts/audio.gd"
 
 [display]
 
@@ -45,6 +47,7 @@ theme/custom="res://ui/theme.tres"
 
 [rendering]
 
+textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true

@@ -50,7 +50,9 @@ var preview_color := 0
 
 var shake_offset := Vector2.ZERO:
 	set(value):
-		shake_offset = value
+		# Pixel themes snap the shake to whole pixels; a sub-pixel offset makes
+		# every tile edge crawl against the grid during a screen shake.
+		shake_offset = value.round() if _pixel else value
 		queue_redraw()
 
 var _grid: Array = []
@@ -62,13 +64,28 @@ var _styles: Array[StyleBoxFlat] = []
 var _empty_style := StyleBoxFlat.new()
 var _ghost_ok := StyleBoxFlat.new()
 var _ghost_bad := StyleBoxFlat.new()
+## Cached from `Themes`, refreshed when the theme changes. A pixel theme draws
+## the board from sprites instead of styleboxes.
+var _pixel := false
+var _tile_tex: Texture2D = null
+var _socket_tex: Texture2D = null
+var _grid_lines := true
 var _last_cell := 0.0
 
 
 func _ready() -> void:
 	_build_styles()
+	Themes.theme_changed.connect(_on_theme_changed)
 	resized.connect(queue_redraw)
 	reset()
+
+
+## Presentation only -- grid state is untouched, so a theme can be switched
+## mid-run without disturbing the game.
+func _on_theme_changed(_id: int) -> void:
+	_build_styles()
+	_last_cell = -1.0        # force _sync_metrics to recompute
+	queue_redraw()
 
 
 func reset() -> void:
@@ -90,7 +107,19 @@ func reset() -> void:
 
 
 func cell_size() -> float:
-	return size.x / float(SIZE)
+	var c := size.x / float(SIZE)
+	# A pixel theme needs whole-pixel cells or every tile is resampled and the
+	# grid shimmers. At 1080 wide this lands on exactly 128 -- four times the
+	# 32px the sprites were drawn at.
+	return floorf(c) if _pixel else c
+
+
+## Offset that centres the grid when flooring the cell size leaves a remainder.
+func grid_origin(cell: float) -> Vector2:
+	if not _pixel:
+		return Vector2.ZERO
+	return Vector2(floorf((size.x - cell * SIZE) * 0.5),
+		floorf((size.y - cell * SIZE) * 0.5))
 
 
 # --- placement ---------------------------------------------------------------
@@ -348,21 +377,26 @@ func cell_at(local: Vector2) -> Vector2i:
 	var c := cell_size()
 	if c <= 0.0:
 		return Vector2i.ZERO
-	return Vector2i(floori(local.x / c), floori(local.y / c))
+	var p := local - grid_origin(c)
+	return Vector2i(floori(p.x / c), floori(p.y / c))
 
 
 # --- drawing -----------------------------------------------------------------
 
 func _build_styles() -> void:
+	_pixel = Themes.is_pixel()
+	_grid_lines = Themes.grid_lines()
+	_tile_tex = Themes.tile_texture()
+	_socket_tex = Themes.socket_texture()
 	_styles.clear()
-	for color: Color in Blocks.COLORS:
+	for color: Color in Themes.palette():
 		var style := StyleBoxFlat.new()
 		style.bg_color = color
 		style.border_color = color.lightened(0.35)
 		_styles.append(style)
-	_empty_style.bg_color = Color(1, 1, 1, 0.035)
-	_ghost_ok.bg_color = Color(1, 1, 1, 0.28)
-	_ghost_bad.bg_color = Color(0.98, 0.44, 0.52, 0.28)
+	_empty_style.bg_color = Themes.value("socket", Color(1, 1, 1, 0.035))
+	_ghost_ok.bg_color = Themes.value("ghost_ok", Color(1, 1, 1, 0.28))
+	_ghost_bad.bg_color = Themes.value("ghost_bad", Color(0.98, 0.44, 0.52, 0.28))
 
 
 func _sync_metrics(cell: float) -> void:
@@ -379,9 +413,11 @@ func _sync_metrics(cell: float) -> void:
 
 
 func cell_rect(x: int, y: int, cell: float) -> Rect2:
-	var inset := cell * 0.06
+	# Pixel tiles butt up against each other: the sprite carries its own ink
+	# outline and bevel, so an inset would just open gaps in the grid.
+	var inset := 0.0 if _pixel else cell * 0.06
 	return Rect2(
-		Vector2(x * cell + inset, y * cell + inset) + shake_offset,
+		Vector2(x * cell + inset, y * cell + inset) + grid_origin(cell) + shake_offset,
 		Vector2(cell - inset * 2.0, cell - inset * 2.0))
 
 
@@ -394,13 +430,22 @@ func _draw() -> void:
 	# Nearly opaque on purpose: the combo shower drifts behind this panel, and
 	# at a lower alpha the particles bleed through and look like they are on
 	# top of the playfield.
-	draw_rect(Rect2(shake_offset, size), Color(0.043, 0.039, 0.098, 0.93))
+	draw_rect(Rect2(shake_offset, size),
+		Themes.value("board_bg", Color(0.043, 0.039, 0.098, 0.93)))
+
+	# The design frames the playfield with an ink border sitting just outside
+	# the grid (`box-shadow: 0 0 0 4px` at 2x, so 2 logical px -> 8 here).
+	var frame: Variant = Themes.value("board_border", null)
+	if frame != null:
+		var w := 8.0
+		draw_rect(Rect2(shake_offset - Vector2(w, w) * 0.5, size + Vector2(w, w)),
+			frame as Color, false, w)
 
 	for y in SIZE:
 		for x in SIZE:
 			var value: int = _grid[y][x]
 			if value == EMPTY:
-				draw_style_box(_empty_style, cell_rect(x, y, cell))
+				_draw_cell(cell_rect(x, y, cell), -1)
 				continue
 			var rect := cell_rect(x, y, cell)
 			var key := Vector2i(x, y)
@@ -417,9 +462,49 @@ func _draw() -> void:
 					0.55, 0.45, t, 1.0, Tween.TRANS_BACK, Tween.EASE_OUT)
 				rect = Rect2(rect.position + rect.size * (1.0 - pop) * 0.5,
 					rect.size * pop)
-			draw_style_box(_styles[value], rect)
+			_draw_cell(rect, value)
+
+	if _grid_lines:
+		_draw_grid(cell)
 
 	for c: Vector2i in preview_cells:
 		if c.x < 0 or c.x >= SIZE or c.y < 0 or c.y >= SIZE:
 			continue
-		draw_style_box(_ghost_ok if preview_valid else _ghost_bad, cell_rect(c.x, c.y, cell))
+		_draw_ghost(cell_rect(c.x, c.y, cell), preview_valid)
+
+
+## Separators on the internal cell boundaries. Optional -- the settings screen
+## exposes it, since the sockets already imply the grid and some players find
+## the extra lines noisy.
+func _draw_grid(cell: float) -> void:
+	var ink: Color = Themes.value("board_border", Themes.value("socket", Color.WHITE))
+	var line := Color(ink, 0.28 if _pixel else 0.10)
+	var w := 4.0 if _pixel else 2.0
+	var o := grid_origin(cell) + shake_offset
+	for i in range(1, SIZE):
+		var x := o.x + i * cell
+		draw_line(Vector2(x, o.y), Vector2(x, o.y + cell * SIZE), line, w)
+		var y := o.y + i * cell
+		draw_line(Vector2(o.x, y), Vector2(o.x + cell * SIZE, y), line, w)
+
+
+## One cell. `value` is a palette index, or -1 for an empty socket.
+func _draw_cell(rect: Rect2, value: int) -> void:
+	if _pixel:
+		var tex := _socket_tex if value < 0 else _tile_tex
+		if tex != null:
+			var tint: Color = _empty_style.bg_color if value < 0 \
+				else Themes.palette()[value]
+			draw_texture_rect(tex, rect, false, tint)
+			return
+	draw_style_box(_empty_style if value < 0 else _styles[value], rect)
+
+
+func _draw_ghost(rect: Rect2, ok: bool) -> void:
+	var fill: Color = _ghost_ok.bg_color if ok else _ghost_bad.bg_color
+	if _pixel:
+		# Flat fill plus a hard 3px inset border, per the design's GHOST_OK.
+		draw_rect(rect, fill)
+		draw_rect(rect, Color(fill, minf(1.0, fill.a * 3.0)), false, 12.0)
+		return
+	draw_style_box(_ghost_ok if ok else _ghost_bad, rect)

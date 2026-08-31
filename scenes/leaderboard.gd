@@ -62,7 +62,7 @@ func _make_row(rank: int, entry: Dictionary) -> Control:
 	rank_label.custom_minimum_size = Vector2(70, 0)
 	rank_label.add_theme_font_size_override("font_size", 40)
 	rank_label.add_theme_color_override("font_color",
-		Color(1, 0.83, 0.32) if rank <= 3 else Color(0.651, 0.635, 0.8))
+		Themes.text_color("highlight") if rank <= 3 else Themes.text_color("muted"))
 	rank_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(rank_label)
 
@@ -83,14 +83,14 @@ func _make_row(rank: int, entry: Dictionary) -> Control:
 	lines_label.text = "%d lines" % int(entry["lines"]) if level.is_empty() \
 		else "%d lines  ·  %s" % [int(entry["lines"]), level]
 	lines_label.add_theme_font_size_override("font_size", 26)
-	lines_label.add_theme_color_override("font_color", Color(0.651, 0.635, 0.8))
+	lines_label.add_theme_color_override("font_color", Themes.text_color("muted"))
 	lines_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meta.add_child(lines_label)
 
 	var date_label := Label.new()
 	date_label.text = Scores.format_date(int(entry["date"]))
 	date_label.add_theme_font_size_override("font_size", 24)
-	date_label.add_theme_color_override("font_color", Color(0.651, 0.635, 0.8, 0.7))
+	date_label.add_theme_color_override("font_color", Themes.text_color("faint"))
 	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	meta.add_child(date_label)
 

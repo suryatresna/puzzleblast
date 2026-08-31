@@ -6,6 +6,7 @@ extends Label
 ## handful of points and should not leave the number visibly ticking -- and
 ## longer for a big line clear, so a large jump reads as an event.
 
+## Fallbacks only -- the live colours come from `Themes`.
 const BASE_COLOR := Color(0.945, 0.941, 1)
 const FLASH_COLOR := Color(1, 0.83, 0.32)
 
@@ -83,7 +84,8 @@ func _render(raw: float) -> void:
 
 
 func _tint(amount: float) -> void:
-	add_theme_color_override("font_color", BASE_COLOR.lerp(FLASH_COLOR, amount))
+	add_theme_color_override("font_color",
+		Themes.text_color("text").lerp(Themes.text_color("highlight"), amount))
 
 
 ## Decays the punch quadratically: hardest right after the hit, settling to

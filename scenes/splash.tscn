@@ -1,24 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://cgfmt0rdxjaxw"]
 
-[ext_resource type="Script" path="res://scenes/splash.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://dcf04ay5hmv07" path="res://scenes/splash.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
-[ext_resource type="Texture2D" path="res://ui/logo.svg" id="3_logo"]
+[ext_resource type="Texture2D" uid="uid://bdjdvnonlwiqr" path="res://ui/logo.svg" id="3_logo"]
+[ext_resource type="Script" uid="uid://beitxhmdrfvq2" path="res://scripts/logo_mark.gd" id="4_logomark"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_track"]
-bg_color = Color(0.945, 0.941, 1, 0.12)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill"]
-bg_color = Color(0.608, 0.549, 1, 0.9)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[node name="Splash" type="Control"]
+[node name="Splash" type="Control" unique_id=1470136387]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -27,10 +14,10 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
-[node name="Background" parent="." instance=ExtResource("2_bg")]
+[node name="Background" parent="." unique_id=921376769 instance=ExtResource("2_bg")]
 layout_mode = 1
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=756225489]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,40 +26,40 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Content" type="VBoxContainer" parent="Center"]
+[node name="Content" type="VBoxContainer" parent="Center" unique_id=374844800]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 28
 alignment = 1
 
-[node name="Logo" type="TextureRect" parent="Center/Content"]
-custom_minimum_size = Vector2(240, 240)
+[node name="Logo" type="TextureRect" parent="Center/Content" unique_id=1998546657]
+custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
 mouse_filter = 2
 texture = ExtResource("3_logo")
 expand_mode = 1
 stretch_mode = 5
+script = ExtResource("4_logomark")
 
-[node name="Title" type="Label" parent="Center/Content"]
+[node name="Title" type="Label" parent="Center/Content" unique_id=556210912]
 unique_name_in_owner = true
 layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.945, 0.941, 1, 1)
+theme_type_variation = &"WordmarkLabel"
 theme_override_font_sizes/font_size = 92
-text = "Pixel Blast"
+text = "PIXEL
+BLAST"
 horizontal_alignment = 1
 
-[node name="Tagline" type="Label" parent="Center/Content"]
+[node name="Tagline" type="Label" parent="Center/Content" unique_id=814437425]
 layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 1)
+theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 36
-text = "Every piece has its place"
+text = "8 × 8  ·  DROP  ·  CLEAR"
 horizontal_alignment = 1
 
-[node name="Footer" type="VBoxContainer" parent="."]
+[node name="Footer" type="VBoxContainer" parent="." unique_id=412072774]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -87,14 +74,14 @@ grow_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 24
 
-[node name="LoadingBar" type="Panel" parent="Footer"]
+[node name="LoadingBar" type="Panel" parent="Footer" unique_id=399425450]
+clip_children = 1
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_bar_track")
-clip_children = 1
+theme_type_variation = &"BarTrack"
 
-[node name="LoadingBarFill" type="Panel" parent="Footer/LoadingBar"]
+[node name="LoadingBarFill" type="Panel" parent="Footer/LoadingBar" unique_id=1726025639]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -103,12 +90,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_bar_fill")
+theme_type_variation = &"BarFill"
 
-[node name="Hint" type="Label" parent="Footer"]
+[node name="Hint" type="Label" parent="Footer" unique_id=621768599]
 layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.651, 0.635, 0.8, 0.7)
+theme_type_variation = &"FaintLabel"
 theme_override_font_sizes/font_size = 30
 text = "tap to continue"
 horizontal_alignment = 1
