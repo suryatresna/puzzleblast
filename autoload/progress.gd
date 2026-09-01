@@ -176,6 +176,10 @@ var _days_played := 0
 var _seen_level := 1
 ## Highest level whose one-off rewards have been paid. See _catch_up_rewards().
 var _rewarded_through := 1
+## Coaching hints already shown, by id. See ui/widgets/coach.gd.
+var _seen_hints: Array[int] = []
+## Whether the one free tutorial bomb has been spent.
+var _tutorial_power_used := false
 ## Runs started today, and whether a doubled session is waiting to be spent.
 var _plays_today := 0
 var _bonus_ready := false
@@ -637,6 +641,46 @@ func plays_today() -> int:
 	return _plays_today
 
 
+# --- teaching ----------------------------------------------------------------
+
+## The power the tutorial hands out. The bomb, because half the board vanishing
+## is unmistakable where Fit or Collapse are subtle enough that a first-timer
+## may not notice anything happened -- and because the real one is sealed in
+## tier 5 behind level 50, which no new player will ever see.
+const TUTORIAL_POWER := Blocks.Power.BOMB
+
+
+func hint_seen(id: int) -> bool:
+	_ensure_loaded()
+	return _seen_hints.has(id)
+
+
+func mark_hint_seen(id: int) -> void:
+	_ensure_loaded()
+	if _seen_hints.has(id):
+		return
+	_seen_hints.append(id)
+	_save()
+
+
+## True while the one free bomb is still owed. Outside the tree and outside the
+## charge economy: it is a lesson, not a reward.
+func tutorial_power_pending() -> bool:
+	_ensure_loaded()
+	return not _tutorial_power_used
+
+
+## Spends it. Call this BEFORE place(), not after -- the opposite of the rule
+## for real powers. A board that refuses the drop would otherwise hand out a
+## second free bomb, and there is only ever meant to be one.
+func use_tutorial_power() -> void:
+	_ensure_loaded()
+	if _tutorial_power_used:
+		return
+	_tutorial_power_used = true
+	_save()
+
+
 ## Thousands separators, for the screens that display these numbers.
 static func commas(n: int) -> String:
 	var digits := str(absi(n))
@@ -668,6 +712,11 @@ func _ensure_loaded() -> void:
 	# went, so they owe nothing up to their level: default to -1 and let the
 	# assignment below seed it from the derived level.
 	_rewarded_through = int(cfg.get_value("progress", "rewarded_through", -1))
+	for h in Array(cfg.get_value("progress", "seen_hints", [])):
+		var id := int(h)
+		if not _seen_hints.has(id):
+			_seen_hints.append(id)
+	_tutorial_power_used = bool(cfg.get_value("progress", "tutorial_power_used", false))
 	_plays_today = maxi(0, int(cfg.get_value("progress", "plays_today", 0)))
 	_bonus_ready = bool(cfg.get_value("progress", "bonus_ready", false))
 	# The level is derived, never trusted from disk -- a hand-edited file
@@ -721,6 +770,8 @@ func _save() -> void:
 	cfg.set_value("progress", "days_played", _days_played)
 	cfg.set_value("progress", "seen_level", _seen_level)
 	cfg.set_value("progress", "rewarded_through", _rewarded_through)
+	cfg.set_value("progress", "seen_hints", _seen_hints)
+	cfg.set_value("progress", "tutorial_power_used", _tutorial_power_used)
 	cfg.set_value("progress", "plays_today", _plays_today)
 	cfg.set_value("progress", "bonus_ready", _bonus_ready)
 	cfg.save(SAVE_PATH)
@@ -742,6 +793,8 @@ func wipe() -> void:
 	_days_played = 0
 	_seen_level = 1
 	_rewarded_through = 1
+	_seen_hints.clear()
+	_tutorial_power_used = false
 	_plays_today = 0
 	_bonus_ready = false
 	_bonus_active = false

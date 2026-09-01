@@ -83,6 +83,16 @@ var _level_aura := false
 ## snapshots -- and the tray lives here, so the two are only ever captured
 ## together. Restoring the board without the tray would take the placed piece
 ## off the board AND leave the slot spent.
+## Which strip slot is showing the free tutorial bomb, or -1. It sits in the
+## first visible EMPTY slot rather than a fourth one: at level 2, when the strip
+## first appears, loadout_size() is 1 and nothing is unlocked yet, so slot 0 is
+## already there and empty.
+var _tutorial_slot := -1
+## The rung currently on screen. A rung is retired when something replaces it,
+## not when it is first shown -- see Coach.advise().
+var _last_hint := 0
+## True for the run in which the first clear happened, so the coach can say so.
+var _coached_clear := false
 var _history: Array = []
 ## Kept so one cast restarts the clock on the last. Without it the first one's
 ## pending restore fires mid-way through the second and cuts its sky short.
@@ -223,6 +233,11 @@ func _sync_powers() -> void:
 	# Hidden outright until the first slot unlocks at level 2. An empty strip
 	# with a charge meter on it promises a currency the player has nothing to
 	# spend on -- and cannot earn a power with, since powers come from levels.
+	# Resolved BEFORE the early return below. _sync_powers can run once during
+	# _ready(), while _powers_enabled is still at its default of true and
+	# _setup_mode has not yet turned it off for Puzzle -- and the early return
+	# would then leave a stale slot index behind for the rest of the run.
+	_tutorial_slot = _free_bomb_slot()
 	%PowerBar.visible = _powers_enabled and Progress.loadout_size() > 0
 	if not %PowerBar.visible:
 		return
@@ -235,6 +250,16 @@ func _sync_powers() -> void:
 		slot.visible = i < Progress.loadout_size()
 		# The dragged power is drawn under the pointer, so its slot reads empty.
 		var showing: bool = held and not (_drag_from == DragFrom.POWER and i == _drag_index)
+		if i == _tutorial_slot:
+			# The one free bomb. Marked FREE rather than with a cost, because
+			# it is a lesson and does not touch the charge economy.
+			showing = not (_drag_from == DragFrom.POWER and i == _drag_index)
+			view.piece = Blocks.power_piece(Progress.TUTORIAL_POWER) if showing else {}
+			view.dimmed = false
+			label.text = "FREE" if showing else ""
+			label.add_theme_color_override("font_outline_color",
+				Themes.value("ink", Color.BLACK))
+			continue
 		view.piece = Blocks.power_piece(power) if showing else {}
 		view.dimmed = showing and not Progress.can_afford(power)
 		label.text = "L%d" % Progress.level_of(power) if showing else ""
@@ -397,6 +422,16 @@ func _begin_drag(pointer: Vector2) -> void:
 		return
 	for i in _power_slots.size():
 		if i >= Progress.loadout_size() or not _power_slots[i].visible:
+			continue
+		# The free bomb is NONE in the loadout and has no cost, so it fails both
+		# halves of the guard below and needs its own branch. Rendering it
+		# without this leaves a bomb that is drawn but not draggable -- the
+		# exact bug that once killed every drag in the game.
+		if i == _tutorial_slot:
+			if _power_slots[i].get_global_rect().has_point(pointer):
+				_start_drag(DragFrom.POWER, i,
+					Blocks.power_piece(Progress.TUTORIAL_POWER), pointer)
+				return
 			continue
 		var power: int = Progress.equipped(i)
 		if power == Blocks.Power.NONE or not Progress.can_afford(power):
@@ -700,7 +735,68 @@ func _pulse_bonus_aura() -> void:
 		BONUS_PULSE_SECONDS * 0.6)
 
 
+## Reads the run and tells the coach what is true right now, then writes the
+## line it picks. Called from the places that already sync the HUD, so there is
+## no new input path and nothing to unwind.
+func _coach() -> void:
+	var dimmed := false
+	for piece: Dictionary in _tray:
+		if not piece.is_empty() and not _board.has_any_move([piece]):
+			dimmed = true
+			break
+	var cheapest := 99
+	for i in Progress.loadout_size():
+		var p: int = Progress.equipped(i)
+		if p != Blocks.Power.NONE:
+			cheapest = mini(cheapest, Progress.cost_of(p))
+	var strip_up: bool = _powers_enabled and Progress.loadout_size() > 0
+
+	var said := Coach.advise({
+		"first_run": Progress.total_score() == 0 and _board.score == 0,
+		"placed_one": _board.score > 0,
+		"bomb_offered": strip_up and _tutorial_slot >= 0,
+		"bomb_spent": strip_up and not Progress.tutorial_power_pending(),
+		"card_dimmed": dimmed,
+		"cleared_one": _coached_clear,
+		"combo_two": _board.combo >= 2,
+		"unlock_waiting": Progress.pending_unlocks() > 0
+			and not Progress.available_to_unlock().is_empty(),
+		"short_charge": strip_up and cheapest < 99 and Progress.charge() < cheapest,
+		"rescue": not _board.has_any_move(_remaining_pieces())
+			and Progress.has_affordable(),
+		"ran_once": Progress.total_score() > 0,
+	}, _last_hint)
+	_last_hint = int(said["id"])
+	%Hint.text = String(said["text"])
+
+
+## Which slot shows the free bomb: the first one that is visible and empty.
+## Returns -1 when the bomb is spent, powers are off, or every slot is taken.
+func _free_bomb_slot() -> int:
+	if not _powers_enabled or not Progress.tutorial_power_pending():
+		return -1
+	for i in mini(_power_slots.size(), Progress.loadout_size()):
+		if Progress.equipped(i) == Blocks.Power.NONE:
+			return i
+	return -1
+
+
 func _fire_power() -> void:
+	# The tutorial bomb, which is free and does not come from the loadout.
+	if _drag_index == _tutorial_slot and _tutorial_slot >= 0:
+		var free_piece: Dictionary = Blocks.power_piece(Progress.TUTORIAL_POWER)
+		# Marked used BEFORE place(), not after -- the opposite of the rule for
+		# real powers. A drop the board refuses would otherwise hand out a
+		# second free bomb, and there is only ever meant to be one.
+		Progress.use_tutorial_power()
+		_push_history()
+		if not _board.place(free_piece["cells"], _drag_origin, free_piece["color"],
+				Progress.TUTORIAL_POWER, 1):
+			_drop_history()
+		_sync_powers()
+		_coach()
+		return
+
 	var power: int = Progress.equipped(_drag_index)
 	if power == Blocks.Power.NONE or not Progress.can_afford(power):
 		_sync_powers()
@@ -922,11 +1018,13 @@ func _on_piece_placed(cells: Array, color_index: int) -> void:
 	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
 	_shake = maxf(_shake, 2.5)
 	Haptics.place()
+	_coach()
 
 
 func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) -> void:
 	# A streak pays charge; a lone clear pays nothing.
 	Progress.award_combo(_board.combo)
+	_coached_clear = true
 	_puzzle_cleared += rows.size() + cols.size()
 	_sync_objective()
 	if _puzzle_solved():
@@ -1394,6 +1492,9 @@ func _restart() -> void:
 	_history.clear()
 	_refill_tray()
 	_sync_powers()
+	_coached_clear = false
+	_last_hint = 0
+	_coach()
 	_end_xp_roll()
 	_sync_xp()
 
