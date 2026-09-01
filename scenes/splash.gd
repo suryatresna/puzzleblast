@@ -16,6 +16,8 @@ var _leaving := false
 func _ready() -> void:
 	# Taken from project settings so the name lives in exactly one place.
 	_title.text = App.game_wordmark()
+	var n: int = Modes.grid_of(Modes.Id.PALETTE)
+	%Tagline.text = "%d × %d  ·  DROP  ·  CLEAR" % [n, n]
 	_content.modulate.a = 0.0
 	_loading_bar.scale.x = 0.0
 

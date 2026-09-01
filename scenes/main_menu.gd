@@ -15,6 +15,10 @@ func _ready() -> void:
 	# The action is the same either way -- progression always carries over.
 	# The label just stops "New Game" reading like a reset.
 	%NewGameButton.text = "Continue" if Progress.has_progress() else "New Game"
+	# The tagline names the board you will actually get, which grows with the
+	# level -- claiming 8x8 to someone playing 12x12 is just wrong.
+	var n: int = Modes.grid_of(Modes.Id.PALETTE)
+	%Subtitle.text = "%d × %d  ·  DROP  ·  CLEAR" % [n, n]
 	%ModesButton.pressed.connect(App.goto_scene.bind(App.SCENE_MODES))
 	%ProfileButton.pressed.connect(App.goto_scene.bind(App.SCENE_PROFILE))
 	%LeaderboardButton.pressed.connect(App.goto_scene.bind(App.SCENE_LEADERBOARD))
