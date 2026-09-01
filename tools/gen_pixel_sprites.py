@@ -244,6 +244,28 @@ def glyph(name):
             tip = (b - 1) if sgn > 0 else (a + 1)
             base = tip - sgn * 5
             d.polygon([(tip, y), (base, y - 4), (base, y + 4)], fill=W)
+    elif name == "rewind":
+        # A counter-clockwise arrow: the clock turned back. Built from polar
+        # coordinates rather than stacked PIL shapes -- an annulus with an
+        # angular gap, so the hole cannot be filled in by a later primitive.
+        import math
+        cx = cy = (a + b) / 2.0
+        outer, inner = 9.0, 5.0
+        for y in range(size):
+            for x in range(size):
+                dx, dy = x - cx, y - cy
+                dist = math.hypot(dx, dy)
+                if not (inner <= dist <= outer):
+                    continue
+                # Screen coords: -90 deg is up. Leave the top open.
+                ang = math.degrees(math.atan2(dy, dx))
+                if -160.0 <= ang <= -35.0:
+                    continue
+                d.point((x, y), fill=W)
+        # Head on the left end of the arc, pointing left: the way it travels
+        # going backwards.
+        d.polygon([(cx - outer - 2, cy - 3), (cx - inner + 1, cy - 8),
+                   (cx - inner + 1, cy + 1)], fill=W)
     elif name == "fit":
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):        # 4 arrows
             cx = mid + dx * 6
@@ -275,6 +297,6 @@ if __name__ == "__main__":
     save(plate_sprite(0.62, ink=(15, 12, 10, 255)), "panel_dark")
     for g in ("bomb", "laser", "collapse", "fit", "diagonal",
               "blackhole", "thunder", "teleport", "meteor", "tsunami",
-              "earthquake", "shuffle"):
+              "earthquake", "shuffle", "rewind"):
         save(glyph(g), "glyph_" + g)
     print("done -> ui/pixel/")

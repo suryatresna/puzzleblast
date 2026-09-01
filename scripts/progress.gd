@@ -61,6 +61,7 @@ const REWARDS := {
 	28: {"power": 1},
 	30: {"power": 1},
 	35: {"power": 1},
+	37: {"power": 1},
 	45: {"power": 1},
 	47: {"power": 1},
 	48: {"power": 1},
@@ -96,7 +97,11 @@ const POWER_TIERS := [
 	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH]},
 	{"level": 25, "powers": [Blocks.Power.SHUFFLE, Blocks.Power.THUNDER,
 		Blocks.Power.LASER]},
-	{"level": 30, "powers": [Blocks.Power.DIAGONAL, Blocks.Power.TELEPORT]},
+	# Rewind breaks the cost ordering on purpose: at 7 it belongs in tier 5,
+	# but it is the forgiveness power, and gating it behind the hardest levels
+	# would put it furthest from the players who most need it.
+	{"level": 30, "powers": [Blocks.Power.DIAGONAL, Blocks.Power.TELEPORT,
+		Blocks.Power.REWIND]},
 	{"level": 45, "powers": [Blocks.Power.METEOR, Blocks.Power.TSUNAMI,
 		Blocks.Power.EARTHQUAKE]},
 	{"level": 50, "powers": [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]},
@@ -120,6 +125,11 @@ const COST := {
 	Blocks.Power.TSUNAMI: 6,
 	Blocks.Power.EARTHQUAKE: 6,
 	Blocks.Power.SHUFFLE: 4,
+	# MUST stay above max(CHARGE_PER_COMBO). Rewind restores the board but
+	# never claws back charge already earned, so clear -> rewind -> re-clear is
+	# a loop; it is only unprofitable while a rewind costs more than the
+	# biggest combo pays. There is a test asserting exactly this.
+	Blocks.Power.REWIND: 7,
 }
 
 const BASE_MAX_CHARGE := 10

@@ -384,11 +384,12 @@ func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int,
 		Blocks.Power.METEOR: return _meteor(color_index, level)
 		Blocks.Power.TSUNAMI: return _tsunami(color_index, level)
 		Blocks.Power.EARTHQUAKE: return _earthquake(level)
-		# The tray belongs to game.gd, not to the board. It intercepts shuffle
-		# before place() is ever called; returning false here means a wiring
-		# mistake shows up as a refund rather than as a power that silently
-		# does nothing.
+		# The tray belongs to game.gd, not to the board. It intercepts these
+		# two before place() is ever called; returning false here means a
+		# wiring mistake shows up as a refund rather than as a power that
+		# silently does nothing.
 		Blocks.Power.SHUFFLE: return false
+		Blocks.Power.REWIND: return false
 	return true
 
 
@@ -894,6 +895,37 @@ func _tsunami(color_index: int, level := 1) -> bool:
 
 
 ## Rows plus columns that are currently complete.
+## Everything about the board that belongs to the run, as plain data. Paired
+## with restore() to let game.gd keep an undo history -- the board itself keeps
+## no history, and knows nothing about who is holding these.
+##
+## `_grid` is an Array OF Arrays, so this is a DEEP copy: a shallow duplicate()
+## shares the row arrays and the snapshot would silently track the live board,
+## making a rewind look like it did nothing.
+func snapshot() -> Dictionary:
+	return {
+		"grid": _grid.duplicate(true),
+		"score": score,
+		"combo": combo,
+		"lines": lines,
+	}
+
+
+## Puts a snapshot back. `best` is deliberately NOT restored: it is the run's
+## high-water mark, and an undo should not erase a score the player really
+## reached. Animation state is dropped rather than restored -- it is transient
+## and self-draining.
+func restore(snap: Dictionary) -> void:
+	_grid = (snap["grid"] as Array).duplicate(true)
+	score = int(snap["score"])
+	combo = int(snap["combo"])
+	lines = int(snap["lines"])
+	_pops.clear()
+	_falls.clear()
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
 func _count_full_lines() -> int:
 	var n := 0
 	for y in grid:

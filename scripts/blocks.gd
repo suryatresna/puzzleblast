@@ -26,11 +26,12 @@ const COLORS := [
 	Color("0369a1"), # tsunami
 	Color("92400e"), # earthquake
 	Color("14b8a6"), # shuffle
+	Color("cbd5e1"), # rewind
 ]
 
 ## Special single-cell pieces. NONE is an ordinary shape.
 enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL, BLACKHOLE, THUNDER,
-	TELEPORT, METEOR, TSUNAMI, EARTHQUAKE, SHUFFLE }
+	TELEPORT, METEOR, TSUNAMI, EARTHQUAKE, SHUFFLE, REWIND }
 
 ## Palette index and glyph for each power.
 const POWER_COLOR := {
@@ -46,6 +47,7 @@ const POWER_COLOR := {
 	Power.TSUNAMI: 17,
 	Power.EARTHQUAKE: 18,
 	Power.SHUFFLE: 19,
+	Power.REWIND: 20,
 }
 
 const BOMB_COLOR := 8
@@ -141,7 +143,8 @@ static func is_bomb(piece: Dictionary) -> bool:
 ## equal odds, so any of the four can turn up either way.
 const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT,
 	Power.DIAGONAL, Power.BLACKHOLE, Power.THUNDER, Power.TELEPORT,
-	Power.METEOR, Power.TSUNAMI, Power.EARTHQUAKE, Power.SHUFFLE]
+	Power.METEOR, Power.TSUNAMI, Power.EARTHQUAKE, Power.SHUFFLE,
+	Power.REWIND]
 
 ## Shown on the call-out when a streak earns a special.
 const POWER_NAMES := {
@@ -157,6 +160,7 @@ const POWER_NAMES := {
 	Power.TSUNAMI: "TSUNAMI!",
 	Power.EARTHQUAKE: "EARTHQUAKE!",
 	Power.SHUFFLE: "SHUFFLE!",
+	Power.REWIND: "REWIND!",
 }
 
 
@@ -272,6 +276,25 @@ static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
 		Power.TSUNAMI: _draw_tsunami(ci, rect)
 		Power.EARTHQUAKE: _draw_earthquake(ci, rect)
 		Power.SHUFFLE: _draw_shuffle(ci, rect)
+		Power.REWIND: _draw_rewind(ci, rect)
+
+
+## An arrow running counter-clockwise: the clock turned back.
+static func _draw_rewind(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.10, 0.12, 0.16)
+	var r := span * 0.27
+	var thick := maxf(2.0, span * 0.085)
+	# Open at the top left, where the head goes.
+	ci.draw_arc(c, r, PI * 1.15, TAU + PI * 0.55, 28, ink, thick)
+	var tip := c + Vector2(-r, 0.0) + Vector2(0.0, -span * 0.02)
+	var h := span * 0.11
+	ci.draw_colored_polygon(PackedVector2Array([
+		tip + Vector2(-h * 0.9, 0.0),
+		tip + Vector2(h * 0.5, -h),
+		tip + Vector2(h * 0.5, h),
+	]), ink)
 
 
 ## A fault line splitting the ground.

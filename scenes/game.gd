@@ -83,6 +83,12 @@ var _levels_this_run := 0
 ## True while the screen is wearing the level-up colour. The next combo takes
 ## the background back, which is what clears it.
 var _level_aura := false
+## One entry per board-mutating action, oldest first; rewind walks back through
+## it. The board keeps no history of its own -- it just hands out plain
+## snapshots -- and the tray lives here, so the two are only ever captured
+## together. Restoring the board without the tray would take the placed piece
+## off the board AND leave the slot spent.
+var _history: Array = []
 var _xp_tween: Tween
 ## While the bar is playing its roll-over, ordinary score updates must not
 ## retarget it -- they would cut the celebration off mid-fill.
@@ -481,6 +487,7 @@ func _drop_tray_piece() -> void:
 		_sync_tray()          # illegal drop puts the card back in its slot
 		return
 
+	_push_history()
 	_board.place(piece["cells"], _drag_origin, piece["color"])
 	_tray[index] = {}
 	if _tray_spent():
@@ -507,6 +514,84 @@ const SHUFFLE_BIG_LEVEL := 4
 ## slot into the gaps a played board leaves, not for another 4-long bar.
 const SHUFFLE_MAX_SPAN := 3
 
+## Actions a rewind steps back over, by level.
+const REWIND_STEPS_BY_LEVEL := [1, 2, 3, 4, 5]
+## One deeper than the longest rewind, so the top level always has its full
+## reach available rather than being clipped by the buffer.
+const HISTORY_MAX := 6
+
+
+## Captures everything an undo has to put back. Deliberately absent:
+## `_board.best` and `_banked`, both high-water marks -- restoring them would
+## let the same points be banked as XP twice -- and anything in `Progress`,
+## because charge and power uses are spent for good. That last one is what
+## keeps rewind from being a charge pump.
+func _push_history() -> void:
+	_history.append({
+		"board": _board.snapshot(),
+		# Shallow is right: entries are references into the static piece
+		# catalogue and are replaced wholesale, never mutated in place.
+		"tray": _tray.duplicate(),
+		"puzzle_cleared": _puzzle_cleared,
+		"last_combo": _last_combo,
+		"flow_step": _flow_step,
+	})
+	while _history.size() > HISTORY_MAX:
+		_history.pop_front()
+
+
+## Undoes a push for an action the board then refused, so a misfire cannot
+## leave a phantom step that rewinds to exactly where the player already is.
+func _drop_history() -> void:
+	if not _history.is_empty():
+		_history.pop_back()
+
+
+## Steps back over the last few actions -- placements and power casts alike --
+## and puts the board and the tray back as they were before them.
+func _rewind(level: int) -> bool:
+	if _history.is_empty():
+		return false
+	var lvl: int = clampi(level, 1, REWIND_STEPS_BY_LEVEL.size())
+	var steps: int = mini(int(REWIND_STEPS_BY_LEVEL[lvl - 1]), _history.size())
+	var snap: Dictionary = {}
+	for i in steps:
+		snap = _history.pop_back()
+
+	_board.restore(snap["board"])
+	_tray = (snap["tray"] as Array).duplicate()
+	_puzzle_cleared = int(snap["puzzle_cleared"])
+	_last_combo = int(snap["last_combo"])
+	_flow_step = int(snap["flow_step"])
+
+	_kill_deal_tweens()
+	_sync_tray()
+	_sync_objective()
+	# The counter snaps rather than rolling when the value drops, but its guard
+	# compares against what is currently SHOWN, so a rewind landing mid-roll
+	# could still animate upward toward a smaller number. Snap it outright.
+	%ScoreValue.reset_to(_board.score)
+	_on_rewound(steps)
+	return true
+
+
+## A sweep back across the board rather than puffs on the restored cells: the
+## point of a rewind is that the whole board moved, not that particular tiles
+## arrived.
+func _on_rewound(steps: int) -> void:
+	Audio.play("collapse", 1.25)
+	var tint: Color = Blocks.power_color(Blocks.Power.REWIND)
+	# The sweep is darkened well below the glyph's colour. Rewind's palette
+	# entry is a pale slate, and at full strength the sweep washed the whole
+	# board out for a beat -- the one thing an undo must not do is hide the
+	# board it just restored. The banner keeps the true colour.
+	_effects.morph_sweep(_board.size.x, tint.darkened(0.55))
+	_overlay.combo_banner_text(
+		"REWIND!" if steps == 1 else "REWIND x%d" % steps, tint)
+	_shake = 5.0
+	Haptics.clear_lines(2)
+	_sync_powers()
+
 
 func _fire_power() -> void:
 	var power: int = Progress.equipped(_drag_index)
@@ -515,9 +600,21 @@ func _fire_power() -> void:
 		return
 	var level: int = Progress.level_of(power)
 
+	# Rewind is not itself an action, so it is never recorded as a step --
+	# rewinding a rewind would be a loop with no bottom.
+	if power == Blocks.Power.REWIND:
+		if not _rewind(level):
+			_sync_powers()    # nothing to undo yet: a free cancel
+			return
+		Progress.spend(power)
+		_sync_powers()
+		return
+
 	# Shuffle never reaches the board: it rewrites the tray, which lives here.
 	if power == Blocks.Power.SHUFFLE:
+		_push_history()
 		if not _shuffle_tray(level):
+			_drop_history()
 			_sync_powers()    # no piece fits anywhere: a free cancel
 			return
 		Progress.spend(power)
@@ -526,7 +623,9 @@ func _fire_power() -> void:
 		return
 
 	var piece: Dictionary = Blocks.power_piece(power)
+	_push_history()
 	if not _board.place(piece["cells"], _drag_origin, piece["color"], power, level):
+		_drop_history()
 		_sync_powers()        # dropped off the board: a free cancel
 		return
 	Progress.spend(power)
@@ -1158,6 +1257,7 @@ func _restart() -> void:
 	_board.reset()
 	_setup_mode()
 	_board.best = Scores.best(Modes.current)
+	_history.clear()
 	_refill_tray()
 	_sync_powers()
 	_end_xp_roll()
