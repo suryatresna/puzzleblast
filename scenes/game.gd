@@ -382,17 +382,48 @@ func _begin_drag(pointer: Vector2) -> void:
 		if _tray[i].is_empty():
 			continue
 		if _slots[i].get_global_rect().has_point(pointer):
-			_drag_index = i
-			_drag_view.piece = _tray[i]
-			_drag_view.fixed_cell = _board.cell_size()
-			_drag_view.size = _drag_view.piece_pixel_size()
-			_drag_view.show()
-			_sync_tray()
-			_update_drag(pointer)
-			# Land on the pick-up point immediately; easing in from wherever
-			# the view happened to sit last would look like a glitch.
-			_drag_view.position = _drag_target
+			_start_drag(DragFrom.TRAY, i, _tray[i], pointer)
 			return
+
+	# The strip. Only a slot holding a power the player can actually pay for
+	# picks up -- an unaffordable one is drawn dimmed, and dragging it just to
+	# be refused on the drop would be a lie.
+	if not _powers_enabled:
+		return
+	for i in _power_slots.size():
+		if i >= Progress.loadout_size() or not _power_slots[i].visible:
+			continue
+		var power: int = Progress.equipped(i)
+		if power == Blocks.Power.NONE or not Progress.can_afford(power):
+			continue
+		if _power_slots[i].get_global_rect().has_point(pointer):
+			_start_drag(DragFrom.POWER, i, Blocks.power_piece(power), pointer)
+			return
+
+
+## The shared tail of a pick-up, from either the tray or the strip.
+##
+## `_drag_from` MUST be assigned before `_update_drag` runs: that function
+## returns immediately while it is NONE. Leaving it unset is what killed the
+## entire drag path -- every placement and every power cast -- because
+## `_end_drag` then matched NONE and did nothing at all.
+func _start_drag(from: DragFrom, index: int, piece: Dictionary,
+		pointer: Vector2) -> void:
+	_drag_from = from
+	_drag_index = index
+	_drag_view.piece = piece
+	_drag_view.fixed_cell = _board.cell_size()
+	_drag_view.size = _drag_view.piece_pixel_size()
+	_drag_view.show()
+	# Redraw the source so the slot being carried reads as empty.
+	if from == DragFrom.TRAY:
+		_sync_tray()
+	else:
+		_sync_powers()
+	_update_drag(pointer)
+	# Land on the pick-up point immediately; easing in from wherever the view
+	# happened to sit last would look like a glitch.
+	_drag_view.position = _drag_target
 
 
 func _update_drag(pointer: Vector2) -> void:
