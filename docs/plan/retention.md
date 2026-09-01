@@ -1,5 +1,8 @@
 # Plan: keeping players coming back
 
+> **Status: partial.** The level system and daily streak shipped; the 2x session
+> bonus shipped. Daily mode is not built.
+
 Research and recommendations for what to build next, ranked by what it is
 likely to return against what it costs here.
 

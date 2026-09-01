@@ -1,8 +1,8 @@
-# ComplexPuzzle
+# Pixel Blast
 
 A drag-and-drop block puzzle for Android and iOS, built with **Godot 4.7.2**.
 
-Five cards sit in a tray at the bottom of the screen. Drag one onto the 8×8 board; fill any row or column and it clears. The tray refills once all five are spent, and the run ends when nothing left in your hand fits anywhere.
+Five cards sit in a tray at the bottom of the screen. Drag one onto the board; fill any row or column and it clears. The tray refills once all five are spent, and the run ends when nothing left in your hand fits anywhere — unless you have a power charged.
 
 | Menu | Line clear | Bomb | Leaderboard |
 |:---:|:---:|:---:|:---:|
@@ -14,7 +14,7 @@ Five cards sit in a tray at the bottom of the screen. Drag one onto the 8×8 boa
 
 **Clearing.** Any full row or column disappears. A piece can complete several lines at once, and a cell sitting on both a full row and a full column only counts once.
 
-**Running out.** Cards that no longer fit anywhere are greyed out, so you can see trouble coming. When none of your remaining cards fit, the game ends.
+**Running out.** Cards that no longer fit anywhere are greyed out, so you can see trouble coming. When none of your remaining cards fit *and* you cannot afford a power, the game ends.
 
 ### Scoring
 
@@ -22,40 +22,58 @@ Five cards sit in a tray at the bottom of the screen. Drag one onto the 8×8 boa
 |---|---|
 | Placing a piece | 1 per cell |
 | Clearing lines | `100 × lines² × combo` |
-| Bomb blast | 5 per cell destroyed |
+| Destructive powers | 4–6 per cell destroyed |
 
 Clearing **two lines at once** is worth far more than two separate clears — `100 × 2² = 400` against `100 + 100`.
 
-**Combo** builds when you clear on consecutive placements and resets the moment you place without clearing. It caps at ×5. Chaining three single clears scores 100, then 200, then 300.
+**Combo** builds when you clear on consecutive placements and resets the moment you place without clearing. It caps at ×5.
 
-### Bombs
+## Powers
 
-A bomb is a single red card that **wipes the half of the board it lands in** — top or bottom, split down the middle, so you aim it at whichever half is worse. It scores 5 points per cell it destroys and leaves your combo streak untouched.
+Thirteen powers sit in a strip above the tray. They are not dealt into your hand — you unlock them by levelling, equip three of them, and pay for each cast with **charge**, which is earned from combos (a 2× clear pays 1, a 5× pays 4).
 
-Bombs arrive two ways:
+| | |
+|---|---|
+| **Bomb** | A square blast, growing to half the board |
+| **Blackhole** | A *disc*, so the corners a bomb would take survive |
+| **Laser** / **Crossfire** | The row and column, or both diagonals |
+| **Thunder** | Strikes random *occupied* cells — the answer to a board too full to place into |
+| **Collapse** | Pulls columns down, closing the gaps a run leaves |
+| **Fit** | Grows to fill the pocket it lands in |
+| **Teleport** | Lifts a block and sets it down where it fits |
+| **Earthquake** | Jostles blocks tighter, stopping the moment a line completes |
+| **Meteor** / **Tsunami** | *Add* blocks — half, most or nearly all of the empty board — aiming to complete lines |
+| **Shuffle** | Re-deals the tray with pieces that actually fit |
+| **Rewind** | Undoes your last actions, board and tray together |
 
-- **Randomly** — a 20% chance per tray refill, roughly one every five hands (about every 24 placements).
-- **Earned** — reach a **×2 combo** and one drops into your tray.
+Each power has five levels of its own, earned by using it.
 
-You'll never hold more than one at a time, and a streak grants at most one bomb however long it runs.
+### The skill tree
 
-### Leaderboard
+Powers are ordered weakest to strongest and sealed behind account levels — 1, 25, 30, 45 and 50. Reaching a level banks an unlock you choose how to spend, but a banked unlock cannot skip a gate: the order you meet the powers in is fixed, which of each tier's you take is yours.
 
-Every finished run is recorded. The top 10 are kept with score, lines cleared and date, and the run you just played is highlighted. Scores persist to `user://scores.cfg` and are local to the device.
+Levels come from **lifetime score**, so a bad run still advances something. Play three days running, or three times in one day, and the next run banks **double XP**.
+
+## Modes
+
+| | |
+|---|---|
+| **Palette** | The endless run. 8×8, growing to 12×12 at level 25 |
+| **Big Palette** | The same rules, 12×12 from the start |
+| **Sprint** | A 60-second fuse |
+| **Puzzle** | A seeded starting board with a lines-to-clear objective. Powers are disabled — a seeded board plus a levelled bomb is not the same puzzle for two players |
 
 ## Running it
 
-Requires **Godot 4.7.2**. The project uses no external dependencies or build steps.
+Requires **Godot 4.7.2**. No external dependencies or build steps.
 
-Open `project.godot` in the Godot editor and press Play, or from the command line:
+Open `project.godot` in the editor and press Play, or:
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot --path .
 ```
 
-The game starts at `scenes/splash.tscn`. It's designed for 1080×1920 portrait; on desktop it opens in a half-size window so it fits on a monitor.
-
-To jump straight to a screen while working on it:
+The game starts at `scenes/splash.tscn`. It's designed for 1080×1920 portrait; on desktop it opens in a half-size window so it fits on a monitor. To jump straight to a screen:
 
 ```bash
 /Applications/Godot.app/Contents/MacOS/Godot --path . res://scenes/game.tscn
@@ -64,35 +82,40 @@ To jump straight to a screen while working on it:
 ## Layout
 
 ```
-scenes/     screens: splash, main_menu, game, leaderboard, settings, about
-scripts/    app (routing) · scores (leaderboard) · board (rules)
-            blocks (piece data) · effects · piece_view · safe_area_margin
-ui/         theme.tres, background, icon/logo, effects/ (particle scenes)
+autoload/   the 7 singletons -- 1:1 with project.godot's [autoload] block
+rules/      board (grid, legality, clearing, scoring) · blocks (piece data)
+scenes/     one screen = .tscn + .gd: splash, main_menu, game, modes,
+            profile, leaderboard, settings, about
+ui/         theme.tres, background · widgets/ effects/ fonts/ pixel/
+platform/   device shims (haptics)
+assets/     audio (42 tracks) and store icons
+tools/      asset generators, and a path audit
+docs/       architecture, powers, progression, theming, testing, invariants
 ```
 
-Two autoloads carry global state: **`App`** owns scene routing and the fade between screens, **`Scores`** owns the leaderboard and is the single source of truth for the best score.
+The play screen keeps rules and presentation apart. `rules/board.gd` holds the grid, placement legality, clearing, scoring and the "no moves left" test, and reports through signals — it never touches the UI. `scenes/game.gd` listens and turns those signals into HUD updates, particles and screen shake. `ui/effects/effects.gd` spawns the particles and knows nothing about the game.
 
-The play screen keeps rules and presentation apart. `board.gd` holds the grid, placement legality, clearing, scoring and the "no moves left" test, and reports what happened through signals — it never touches the UI. `game.gd` listens and turns those signals into HUD updates, particles and screen shake.
-
-Pieces come from 15 base shapes in `blocks.gd`; rotations are generated at load and de-duplicated into 37 distinct pieces. Adding a shape means adding one line.
+Pieces come from 18 base shapes in `rules/blocks.gd`; rotations are generated at load and de-duplicated. Adding a shape means adding one line.
 
 ## Platform notes
 
 - **Portrait**, 1080×1920 design resolution, with `canvas_items` stretch so it adapts across phone aspect ratios.
-- **Safe areas** are handled on Android and iOS — notches, rounded corners and the home indicator are folded into the layout margins.
-- **Metal** is the renderer on macOS and iOS. Godot 4.7 has a native Metal backend and selects it by default; no configuration is needed.
-- The **Exit** menu entry is hidden on iOS, since Apple's review guidelines reject apps that quit themselves.
-- Godot 4.7.2's iOS **simulator** library is x86_64-only while Xcode 26 simulators are arm64-only, so the simulator cannot run this on Apple Silicon. Test on a physical device, or use the macOS build — it exercises the same Metal backend.
+- **Safe areas** are handled on Android and iOS — notches, rounded corners and the home indicator fold into the layout margins.
+- **Metal** is the renderer on macOS and iOS; Godot 4.7 selects it by default.
+- The **Exit** menu entry is hidden on iOS, since Apple rejects apps that quit themselves.
+- Godot 4.7.2's iOS **simulator** slice is x86_64-only while Xcode 26 simulators are arm64-only, so the simulator cannot run this on Apple Silicon. Use a physical device, or the macOS build.
 
 ## Status
 
-Playable end to end: splash, menu, a full game with bombs and combos, game over, and a persistent leaderboard.
+Playable end to end, with progression, thirteen powers, four modes, three themes, music and a persistent leaderboard.
 
 Not done yet:
 
-- **No audio.** Every moment — placing, clearing, the bomb, the confetti — is silent. This is the most noticeable gap.
-- **Settings** is a navigable placeholder with no working options.
-- The leaderboard is **local only**; there's no backend or Game Center / Play Games integration.
-- **No export presets** are configured, so there is no Android or iOS build set up yet.
+- **Game Center** is code-complete but needs the iOS plugin installed and App Store Connect leaderboards created — see `docs/gamecenter.md`.
+- The leaderboard is otherwise **local only**; there is no backend.
+- **Sound effects are placeholders** generated by `tools/gen_audio.py`. The music is by [Abstraction](https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation.
+- **No Android export preset** is configured; the iOS one is.
 
-`scripts/playfield.gd`, `tetromino.gd`, `next_preview.gd` and `input_actions.gd` are leftovers from an earlier falling-block prototype. Nothing references them and they can be deleted.
+## Credits
+
+Music by [Abstraction](https://abstractionmusic.com/). Fonts are vendored under `ui/fonts/` with their licences.

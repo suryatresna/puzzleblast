@@ -1,5 +1,8 @@
 # Prompt: convert Pixel Blast to pixel art
 
+> **Status: delivered.** The pixel themes described here shipped as Pixel Warm and
+> Pixel Dark. See `docs/theming.md`.
+
 Hand this to an agent (or follow it yourself) to re-theme the game as pixel art.
 
 This conversion has been done once already and then reverted on request, so

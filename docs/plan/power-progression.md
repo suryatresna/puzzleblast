@@ -1,5 +1,9 @@
 # Plan: powers as a daily progression
 
+> **Status: delivered.** The skill tree, charge economy and power levels described
+> here shipped. Kept for the reasoning. See `docs/powers.md` and
+> `docs/progression.md` for what exists.
+
 Turning bomb, laser, collapse and fit from a lucky spike inside one run into
 something that carries across days.
 

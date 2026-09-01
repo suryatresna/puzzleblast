@@ -1,5 +1,8 @@
 # Plan: AdMob + "Ads Free" purchase
 
+> **Status: not started.** No ads and no IAP exist. `platform/` is where the shims
+> would go.
+
 Two features that only make sense together: interstitial ads after a
 disappointing run, and a one-off purchase that removes them.
 
