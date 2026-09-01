@@ -1,6 +1,11 @@
 extends "res://scripts/menu_screen.gd"
-## The player's progression: level, lifetime score, streak, and the five powers
-## with their levels.
+## The player's progression: level, lifetime score, streak, and the power skill
+## tree with each power's level.
+##
+## The powers are laid out as a tree, not a list: `Progress.POWER_TIERS` orders
+## them weakest to strongest and seals each tier behind an account level, so
+## the order the player meets them in is fixed even though which of a tier's
+## two they take is their own choice.
 ##
 ## This is also where the loadout is chosen, deliberately: it keeps equipping a
 ## pre-run decision, so `game.gd` never grows a second modal input state.
@@ -13,6 +18,7 @@ const PieceView := preload("res://scripts/piece_view.gd")
 
 const NAME_FONT := 32
 const BLURB_FONT := 26
+const TIER_FONT := 28
 const ICON := 96
 
 var _xp_tween: Tween
@@ -38,9 +44,15 @@ func _rebuild() -> void:
 	]
 
 	var pending := Progress.pending_unlocks()
-	if pending > 0:
+	var choosable: int = Progress.available_to_unlock().size()
+	if pending > 0 and choosable > 0:
 		%Hint.text = "Choose %d new power" % pending if pending == 1 \
 			else "Choose %d new powers" % pending
+	elif pending > 0:
+		# Unlocks in the bank with every open tier already taken. Saying so
+		# beats an unexplained "Choose 1" above nothing tappable.
+		%Hint.text = "%d unlock waiting  ·  reach the next tier to spend it" % pending \
+			if pending == 1 else "%d unlocks waiting  ·  reach the next tier" % pending
 	elif Progress.unlocked().is_empty():
 		%Hint.text = "Score 1,000 to earn your first power."
 	else:
@@ -51,8 +63,16 @@ func _rebuild() -> void:
 
 	for child in %Powers.get_children():
 		child.queue_free()
-	for power: int in Blocks.ALL_POWERS:
-		_card(power, pending)
+	# The tree, tier by tier. Powers are not listed in enum order any more:
+	# the table IS the order, weakest tier first, so the list reads as the path
+	# the player walks rather than as a bag of ten things.
+	for i in Progress.POWER_TIERS.size():
+		var tier: Dictionary = Progress.POWER_TIERS[i]
+		var gate := int(tier["level"])
+		var open := level >= gate
+		_tier_header(i + 1, gate, open, tier["powers"])
+		for power: int in tier["powers"]:
+			_card(power, pending, open, gate)
 
 
 ## The XP bar. Normally it just eases to its value; if the player has levelled
@@ -101,7 +121,43 @@ func _equipped_count() -> int:
 	return n
 
 
-func _card(power: int, pending: int) -> void:
+## The band above each tier's powers: what it is, and what opens it. Sealed
+## tiers say the level rather than just greying out, so the tree reads as a
+## path with a price on each step.
+func _tier_header(index: int, gate: int, open: bool, powers: Array) -> void:
+	var owned := 0
+	for p: int in powers:
+		if Progress.is_unlocked(p):
+			owned += 1
+
+	var band := HBoxContainer.new()
+	band.add_theme_constant_override("separation", 12)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	%Powers.add_child(band)
+
+	var title := Label.new()
+	title.text = "TIER %d" % index
+	title.add_theme_font_size_override("font_size", TIER_FONT)
+	title.theme_type_variation = &"TitleLabel" if open else &"FaintLabel"
+	band.add_child(title)
+
+	var note := Label.new()
+	note.add_theme_font_size_override("font_size", BLURB_FONT)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if not open:
+		note.text = "Locked  ·  reach level %d" % gate
+		note.theme_type_variation = &"DangerLabel"
+	elif owned == powers.size():
+		note.text = "%d of %d taken" % [owned, powers.size()]
+		note.theme_type_variation = &"FaintLabel"
+	else:
+		note.text = "%d of %d taken" % [owned, powers.size()]
+		note.theme_type_variation = &"MutedLabel"
+	band.add_child(note)
+
+
+func _card(power: int, pending: int, tier_open := true, gate := 1) -> void:
 	var owned := Progress.is_unlocked(power)
 	var equipped := Progress.loadout().has(power)
 
@@ -142,8 +198,11 @@ func _card(power: int, pending: int) -> void:
 	blurb.add_theme_font_size_override("font_size", BLURB_FONT)
 	blurb.theme_type_variation = &"MutedLabel"
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if not owned:
-		blurb.text = "Locked" if pending <= 0 else "Tap to unlock"
+	if not tier_open:
+		blurb.text = "Needs level %d  ·  costs %d" % [gate, Progress.cost_of(power)]
+	elif not owned:
+		blurb.text = "Tap to unlock  ·  costs %d" % Progress.cost_of(power) \
+			if pending > 0 else "Locked  ·  costs %d" % Progress.cost_of(power)
 	else:
 		var lv := Progress.level_of(power)
 		var uses := Progress.uses_of(power)
@@ -171,6 +230,13 @@ func _card(power: int, pending: int) -> void:
 ## loadout.
 func _tapped(power: int) -> void:
 	if not Progress.is_unlocked(power):
+		if not Progress.is_tier_open(power):
+			# Silence here reads as a broken button, so the hint answers.
+			%Hint.text = "%s unlocks at level %d  ·  you are level %d" % [
+				Blocks.power_name(power).trim_suffix("!"),
+				Progress.tier_level(power), Progress.level()]
+			%Hint.show()
+			return
 		Progress.unlock(power)      # no-op without a banked unlock
 		return
 	var slot := Progress.loadout().find(power)

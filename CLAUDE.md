@@ -194,6 +194,14 @@ Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its card
 
 The design's fourth mode (Daily) and the `TILE SET` row are not built — Daily is gated on a level system that does not exist, and the tile set is fixed by `Themes.ACTIVE`.
 
+### The skill tree
+
+`Progress.POWER_TIERS` is the single source of truth for the order the player meets the powers in: five tiers of two, ordered weakest to strongest by charge cost, each sealed behind an account level (1, 25, 30, 45, 50). `unlock()` refuses a power whose tier has not opened, so a **banked unlock cannot skip a gate** — which of a tier's two you take is your choice, the order the tiers arrive in is not. `profile.gd` builds the list straight off this table rather than off `Blocks.ALL_POWERS`, so a re-tiering needs no UI change.
+
+`REWARDS`' `"power"` grants are spaced to match the gates (2, 4, then two per tier as it opens). **Keep them in step**: the old schedule handed out all ten by L20, which under the tree would leave eight unlocks stuck in the bank behind a gate. There is a test asserting no level ever banks more unlocks than the open tiers can absorb.
+
+> **The top two tiers are currently out of reach.** On the ×1.35 curve L45 is 1.55 billion lifetime score and L50 is 6.95 billion, against maybe 1–20k a run. The gate levels are what was asked for and are a one-line table; making them reachable is a change to `LEVEL_GROWTH`, not to the tree.
+
 ### Powers and progression
 
 Powers no longer appear in the tray. They are unlocked by levelling, equipped to a 3-slot loadout on the profile screen, shown in a strip above the tray, paid for with charge earned from combos, and dragged onto the board like any other piece.
@@ -225,7 +233,7 @@ Two layout traps seen in this repo:
 
 - Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
 - The leaderboard tags every row with its mode and filters by it; difficulty level is no longer recorded or shown anywhere.
-- `scenes/profile.tscn` shows level, XP, streak and all ten powers (in a `ScrollContainer`, so the list grows without a layout change), and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
+- `scenes/profile.tscn` shows level, XP, streak and the power **skill tree** (in a `ScrollContainer`, so it grows without a layout change), and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
 - `scenes/modes.tscn` covers Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
 - `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. Difficulty is deliberately absent — it follows the score during a run, so there is nothing to set. The design's RESTORE PURCHASES is not built — there is no IAP.
 - Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.

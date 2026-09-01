@@ -42,23 +42,28 @@ const MAX_LEVEL := 60
 ##   "slot"   -> a loadout slot
 ##   "theme"  -> that Themes.Id becomes selectable
 ##   "charge" -> added to max charge
+## Power grants are spaced to match POWER_TIERS: two while the first tier is
+## the only one open, then two as each gate falls. Handing out ten unlocks by
+## L20, as this table used to, would have left eight of them unspendable behind
+## a gate for a very long time.
 const REWARDS := {
 	2: {"power": 1, "slot": 1},
 	3: {"charge": 5},
 	4: {"power": 1, "slot": 1},
 	5: {"theme": ThemesScript.Id.PIXEL_WARM},
-	6: {"power": 1, "slot": 1},
-	8: {"power": 1},
-	10: {"theme": ThemesScript.Id.CLASSIC, "power": 1},
-	12: {"power": 1},
-	14: {"power": 1},
+	6: {"slot": 1},
+	10: {"theme": ThemesScript.Id.CLASSIC},
 	15: {"charge": 5},
-	16: {"power": 1},
-	# Carries both. Putting the eighth power on its own level would have meant
-	# L22, which is 1.56M lifetime -- an order past where the curve was ever
-	# designed to reach. L18 is 467k, the tail the table already had.
-	18: {"charge": 5, "power": 1},
-	20: {"charge": 5, "power": 1},
+	18: {"charge": 5},
+	20: {"charge": 5},
+	25: {"power": 1},
+	27: {"power": 1},
+	30: {"power": 1},
+	35: {"power": 1},
+	45: {"power": 1},
+	47: {"power": 1},
+	50: {"power": 1},
+	55: {"power": 1},
 }
 
 # --- powers ------------------------------------------------------------------
@@ -77,6 +82,21 @@ const POWER_MAX_LEVEL := {
 	Blocks.Power.METEOR: 3,
 	Blocks.Power.TSUNAMI: 3,
 }
+
+## The skill tree. Powers are ordered weakest to strongest -- the tiers track
+## charge cost, which is the game's own measure of how much a power is worth --
+## and each tier is sealed behind an account level. A banked unlock cannot be
+## spent on a tier that has not opened, so the order the player meets the
+## powers in is fixed even though WHICH of a tier's two they take is theirs.
+##
+## `level` 1 means no gate: the first tier is what a new player chooses from.
+const POWER_TIERS := [
+	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH]},
+	{"level": 25, "powers": [Blocks.Power.THUNDER, Blocks.Power.LASER]},
+	{"level": 30, "powers": [Blocks.Power.DIAGONAL, Blocks.Power.TELEPORT]},
+	{"level": 45, "powers": [Blocks.Power.METEOR, Blocks.Power.TSUNAMI]},
+	{"level": 50, "powers": [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]},
+]
 
 ## Cumulative uses to reach each level. Index 0 is level 1, so a freshly
 ## unlocked power starts at 1 with zero uses.
@@ -256,13 +276,51 @@ func is_unlocked(power: int) -> bool:
 	return _unlocked.has(power)
 
 
+## Which tier a power sits in, 1-based. 0 for anything not in the tree.
+func tier_of(power: int) -> int:
+	for i in POWER_TIERS.size():
+		if (POWER_TIERS[i]["powers"] as Array).has(power):
+			return i + 1
+	return 0
+
+
+## The account level that opens this power's tier. 1 when it is ungated.
+func tier_level(power: int) -> int:
+	var t := tier_of(power)
+	if t <= 0:
+		return 1
+	return int(POWER_TIERS[t - 1]["level"])
+
+
+## Whether the player has reached the level that opens this power's tier.
+func is_tier_open(power: int) -> bool:
+	_ensure_loaded()
+	return _level >= tier_level(power)
+
+
+## Powers the player could spend a banked unlock on right now.
+func available_to_unlock() -> Array[int]:
+	_ensure_loaded()
+	var out: Array[int] = []
+	for tier: Dictionary in POWER_TIERS:
+		if _level < int(tier["level"]):
+			continue
+		for p: int in tier["powers"]:
+			if not _unlocked.has(p):
+				out.append(p)
+	return out
+
+
 ## Spends one pending unlock on `power`. Returns false if there is nothing to
-## spend, the power is already owned, or it is not a real power.
+## spend, the power is already owned, it is not a real power, or its tier has
+## not opened yet -- a banked unlock cannot skip a gate.
 func unlock(power: int) -> bool:
 	_ensure_loaded()
 	if _pending_unlocks <= 0 or _unlocked.has(power):
 		return false
 	if not Blocks.ALL_POWERS.has(power):
+		return false
+	if not is_tier_open(power):
 		return false
 	_pending_unlocks -= 1
 	_unlocked.append(power)
