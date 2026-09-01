@@ -343,7 +343,9 @@ func _end_drag(_pointer: Vector2) -> void:
 		_sync_tray()          # illegal drop puts the card back in its slot
 		return
 
-	_board.place(piece["cells"], _drag_origin, piece["color"], Blocks.power_of(piece))
+	var power: Blocks.Power = Blocks.power_of(piece)
+	_board.place(piece["cells"], _drag_origin, piece["color"], power,
+		Progress.level_of(power))
 	_tray[index] = {}
 
 	if _tray_spent():
@@ -527,7 +529,7 @@ func _on_bomb_detonated(at: Vector2i, from_row: int, to_row: int,
 	_sync_tray()
 
 
-func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
+func _on_laser_fired(at: Vector2i, cleared: int, points: int, _level := 1) -> void:
 	Audio.play("laser")
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
@@ -543,7 +545,7 @@ func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
 
 ## The diagonal power. Same treatment as the laser, struck along both diagonals
 ## instead of the row and column.
-func _on_diagonal_fired(at: Vector2i, cleared: int, points: int) -> void:
+func _on_diagonal_fired(at: Vector2i, cleared: int, points: int, _level := 1) -> void:
 	Audio.play("laser", 0.85)
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
@@ -590,6 +592,9 @@ func _on_game_over() -> void:
 	else:
 		Audio.play_game_over()
 	Haptics.stop()               # nothing should still be buzzing on game over
+	# Every run banks its score as XP, win or lose -- a bad run still advances
+	# something, which is the property the game lacked entirely.
+	var levels_gained: int = Progress.add_score(_board.score)
 	var rank: int = Scores.submit(_board.score, _board.lines, Modes.current)
 	# Game Center gets every finished run. The call is a no-op off iOS, and
 	# queues if sign-in has not landed yet, so the local table stays the
@@ -687,6 +692,7 @@ func _restart() -> void:
 	_combo_power_given = false
 	_last_combo = 0
 	%ScoreValue.reset_to(0)
+	Progress.touch_day()
 	_board.reset()
 	_setup_mode()
 	_board.best = Scores.best(Modes.current)

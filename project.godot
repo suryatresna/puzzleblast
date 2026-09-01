@@ -28,6 +28,7 @@ Themes="*res://scripts/themes.gd"
 Audio="*res://scripts/audio.gd"
 Modes="*res://scripts/modes.gd"
 GameServices="*res://scripts/game_services.gd"
+Progress="*res://scripts/progress.gd"
 
 [display]
 

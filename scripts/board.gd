@@ -11,8 +11,8 @@ signal score_changed(score: int, best: int, combo: int)
 signal lines_cleared(rows: Array, cols: Array, cell_count: int, points: int)
 signal piece_placed(cells: Array, color_index: int)
 signal bomb_detonated(at: Vector2i, from_row: int, to_row: int, cleared: int, points: int)
-signal laser_fired(at: Vector2i, cleared: int, points: int)
-signal diagonal_fired(at: Vector2i, cleared: int, points: int)
+signal laser_fired(at: Vector2i, cleared: int, points: int, level: int)
+signal diagonal_fired(at: Vector2i, cleared: int, points: int, level: int)
 signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
@@ -37,6 +37,55 @@ const DIAGONAL_POINTS_PER_CELL := 6
 ## Most cells a fit piece will grow to. Without a cap it would swallow the
 ## whole board on an open layout.
 const FIT_MAX_CELLS := 5
+
+# --- power level tables ------------------------------------------------------
+#
+# These live here, beside the scoring constants, because what a laser DOES is a
+# game rule. `Progress` owns cost and XP; it does not own geometry. Keeping the
+# tables here also means board.gd stays testable with `Board.new()` and a plain
+# int, with no autoload to register.
+#
+# `spread` is extra lines either side, so 0 covers one line, 1 covers three.
+# Level 2 reproduces the behaviour these powers had before levels existed, so
+# a maxed power beats the old one and a fresh one is weaker.
+const MAX_POWER_LEVEL := 5
+
+## Each level is a strict SUPERSET of the one below, so a bomb can never get
+## weaker as it levels. That is not automatic: on an 8x8 board a 7x7 blast (49
+## cells) already covers more than half the board (32), so "half the board"
+## cannot simply be the top of the ramp -- level 5 takes the half AND the
+## blast.
+const BOMB_BY_LEVEL := [
+	{"radius": 1, "row": false, "half": false},   # 3x3
+	{"radius": 2, "row": false, "half": false},   # 5x5
+	{"radius": 2, "row": true, "half": false},    # 5x5 + the row
+	{"radius": 3, "row": true, "half": false},    # 7x7 + the row
+	{"radius": 3, "row": true, "half": true},     # ...and the half (the original)
+]
+const LASER_BY_LEVEL := [
+	{"column": false, "row_spread": 0, "col_spread": 0},
+	{"column": true, "row_spread": 0, "col_spread": 0},    # the original
+	{"column": true, "row_spread": 1, "col_spread": 0},
+	{"column": true, "row_spread": 1, "col_spread": 1},
+	{"column": true, "row_spread": 2, "col_spread": 2},
+]
+const DIAGONAL_BY_LEVEL := [
+	{"both": false, "spread": 0, "core": 0},
+	{"both": true, "spread": 0, "core": 0},                # the original
+	{"both": true, "spread": 1, "core": 0},
+	{"both": true, "spread": 2, "core": 0},
+	{"both": true, "spread": 2, "core": 1},                # + a 3x3 at the strike
+]
+## Columns a collapse pulls down. 0 means every column.
+const MORPH_COLUMNS := [1, 3, 5, 0, 0]
+## Level 5 runs the drop twice, so a collapse that opens a line cashes it.
+const MORPH_CHAIN_LEVEL := 5
+const FIT_CELLS_BY_LEVEL := [3, 5, 7, 9, 12]
+
+
+## Clamps a level to the table range.
+static func _lvl(level: int) -> int:
+	return clampi(level, 1, MAX_POWER_LEVEL) - 1
 ## How long settled blocks take to drop after a morph.
 const FALL_TIME := 0.30
 const LINE_BASE := 100
@@ -182,6 +231,31 @@ func grid_origin(cell: float) -> Vector2:
 
 # --- placement ---------------------------------------------------------------
 
+## Powers that WRITE a tile behave like an ordinary piece and need an empty
+## cell: `_morph` and `_fit` both assign into `_grid` at the target, so aiming
+## one at an occupied cell would silently recolour a block. Everything else
+## only destroys, and aiming a laser at a cluster is the whole point of firing
+## one by hand.
+const PLACING_POWERS := [Blocks.Power.MORPH, Blocks.Power.FIT]
+
+
+## Whether a power may be fired at this spot. Ordinary placement (power NONE)
+## is unchanged -- it still goes through can_place().
+func can_target(cells: Array, origin: Vector2i, power := Blocks.Power.NONE) -> bool:
+	if power == Blocks.Power.NONE or PLACING_POWERS.has(power):
+		return can_place(cells, origin)
+	return _in_bounds(cells, origin)
+
+
+## Bounds only, without the occupancy test.
+func _in_bounds(cells: Array, origin: Vector2i) -> bool:
+	for c: Vector2i in cells:
+		var p: Vector2i = origin + c
+		if p.x < 0 or p.x >= grid or p.y < 0 or p.y >= grid:
+			return false
+	return true
+
+
 func can_place(cells: Array, origin: Vector2i) -> bool:
 	for c: Vector2i in cells:
 		var p := origin + c
@@ -195,12 +269,12 @@ func can_place(cells: Array, origin: Vector2i) -> bool:
 ## Places the piece, resolves any completed lines and updates the score.
 ## Returns false if the position was illegal and nothing changed.
 func place(cells: Array, origin: Vector2i, color_index: int,
-		power := Blocks.Power.NONE) -> bool:
-	if not alive or not can_place(cells, origin):
+		power := Blocks.Power.NONE, level := 1) -> bool:
+	if not alive or not can_target(cells, origin, power):
 		return false
 
 	if power != Blocks.Power.NONE:
-		_fire_power(power, origin, color_index)
+		_fire_power(power, origin, color_index, level)
 		return true
 
 	var placed: Array = []
@@ -221,22 +295,33 @@ func place(cells: Array, origin: Vector2i, color_index: int,
 	return true
 
 
-func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int) -> void:
+func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int,
+		level := 1) -> void:
 	match power:
-		Blocks.Power.BOMB: _detonate(at)
-		Blocks.Power.LASER: _laser(at)
-		Blocks.Power.MORPH: _morph(at, color_index)
-		Blocks.Power.FIT: _fit(at, color_index)
-		Blocks.Power.DIAGONAL: _diagonal(at)
+		Blocks.Power.BOMB: _detonate(at, level)
+		Blocks.Power.LASER: _laser(at, level)
+		Blocks.Power.MORPH: _morph(at, color_index, level)
+		Blocks.Power.FIT: _fit(at, color_index, level)
+		Blocks.Power.DIAGONAL: _diagonal(at, level)
 
 
 ## Burns out the whole row and column the laser lands on.
-func _laser(at: Vector2i) -> void:
+func _laser(at: Vector2i, level := 1) -> void:
+	var spec: Dictionary = LASER_BY_LEVEL[_lvl(level)]
 	var doomed := {}
-	for x in grid:
-		doomed[Vector2i(x, at.y)] = true
-	for y in grid:
-		doomed[Vector2i(at.x, y)] = true
+	for d in range(-int(spec["row_spread"]), int(spec["row_spread"]) + 1):
+		var y: int = at.y + d
+		if y < 0 or y >= grid:
+			continue
+		for x in grid:
+			doomed[Vector2i(x, y)] = true
+	if bool(spec["column"]):
+		for d in range(-int(spec["col_spread"]), int(spec["col_spread"]) + 1):
+			var x: int = at.x + d
+			if x < 0 or x >= grid:
+				continue
+			for y in grid:
+				doomed[Vector2i(x, y)] = true
 
 	var cleared := 0
 	for cell: Vector2i in doomed:
@@ -248,7 +333,7 @@ func _laser(at: Vector2i) -> void:
 	var points := cleared * LASER_POINTS_PER_CELL
 	score += points
 	best = maxi(best, score)
-	laser_fired.emit(at, cleared, points)
+	laser_fired.emit(at, cleared, points, _lvl(level) + 1)
 	score_changed.emit(score, best, combo)
 	queue_redraw()
 
@@ -257,11 +342,22 @@ func _laser(at: Vector2i) -> void:
 ## cannot make. Unlike a row and column, the two diagonals through a point vary
 ## in length with where it sits, so a corner strike is weak and a centre strike
 ## is strong. That is the trade the player is making.
-func _diagonal(at: Vector2i) -> void:
+func _diagonal(at: Vector2i, level := 1) -> void:
+	var spec: Dictionary = DIAGONAL_BY_LEVEL[_lvl(level)]
+	var spread: int = int(spec["spread"])
 	var doomed := {}
 	for i in range(-grid, grid):
-		for cell: Vector2i in [Vector2i(at.x + i, at.y + i),
-				Vector2i(at.x + i, at.y - i)]:
+		# `off` walks the parallel diagonals either side of the strike.
+		for off in range(-spread, spread + 1):
+			var line: Array[Vector2i] = [Vector2i(at.x + i + off, at.y + i)]
+			if bool(spec["both"]):
+				line.append(Vector2i(at.x + i + off, at.y - i))
+			for cell: Vector2i in line:
+				if cell.x >= 0 and cell.x < grid and cell.y >= 0 and cell.y < grid:
+					doomed[cell] = true
+	for r in range(-int(spec["core"]), int(spec["core"]) + 1):
+		for c in range(-int(spec["core"]), int(spec["core"]) + 1):
+			var cell := Vector2i(at.x + c, at.y + r)
 			if cell.x >= 0 and cell.x < grid and cell.y >= 0 and cell.y < grid:
 				doomed[cell] = true
 
@@ -275,7 +371,7 @@ func _diagonal(at: Vector2i) -> void:
 	var points := cleared * DIAGONAL_POINTS_PER_CELL
 	score += points
 	best = maxi(best, score)
-	diagonal_fired.emit(at, cleared, points)
+	diagonal_fired.emit(at, cleared, points, _lvl(level) + 1)
 	score_changed.emit(score, best, combo)
 	queue_redraw()
 
@@ -283,12 +379,33 @@ func _diagonal(at: Vector2i) -> void:
 ## Drops every settled block to the bottom of its column, closing the gaps a
 ## run leaves behind. Rows completed by the collapse then clear and score, so a
 ## well-timed morph can cash in a board that looked wasted.
-func _morph(at: Vector2i, color_index: int) -> void:
+func _morph(at: Vector2i, color_index: int, level := 1) -> void:
 	_grid[at.y][at.x] = color_index          # the piece itself falls too
 	_pops[at] = 0.0
 
+	# A low-level collapse only pulls the columns around the strike; by level 4
+	# it takes the whole board, and level 5 runs a second pass so a drop that
+	# opens a line gets to cash it.
+	var span: int = int(MORPH_COLUMNS[_lvl(level)])
+	var passes: int = 2 if _lvl(level) + 1 >= MORPH_CHAIN_LEVEL else 1
 	var dropped := 0
-	for x in grid:
+	for pass_i in passes:
+		dropped += _drop_columns(at.x, span)
+
+	board_morphed.emit(dropped)
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Pulls settled blocks to the bottom of their column. `span` columns centred
+## on `centre`, or every column when span is 0. Returns how many blocks moved.
+func _drop_columns(centre: int, span: int) -> int:
+	var dropped := 0
+	var from_x: int = 0 if span <= 0 else maxi(0, centre - span / 2)
+	var to_x: int = grid - 1 if span <= 0 else mini(grid - 1, centre + span / 2)
+	for x in range(from_x, to_x + 1):
 		var write := grid - 1
 		for y in range(grid - 1, -1, -1):
 			if _grid[y][x] == EMPTY:
@@ -301,23 +418,19 @@ func _morph(at: Vector2i, color_index: int) -> void:
 				_falls[Vector2i(x, write)] = {"dist": float(write - y), "t": 0.0}
 				dropped += 1
 			write -= 1
-
-	board_morphed.emit(dropped)
-	_resolve_lines()
-	best = maxi(best, score)
-	score_changed.emit(score, best, combo)
-	queue_redraw()
+	return dropped
 
 
 ## Grows to fill the pocket of empty cells it was dropped into, up to
 ## FIT_MAX_CELLS. Breadth-first from the drop point, so it spreads evenly
 ## rather than snaking off in one direction.
-func _fit(at: Vector2i, color_index: int) -> void:
+func _fit(at: Vector2i, color_index: int, level := 1) -> void:
 	var filled: Array = []
 	var seen := {at: true}
 	var queue: Array = [at]
 
-	while not queue.is_empty() and filled.size() < FIT_MAX_CELLS:
+	var budget: int = int(FIT_CELLS_BY_LEVEL[_lvl(level)])
+	while not queue.is_empty() and filled.size() < budget:
 		var cell: Vector2i = queue.pop_front()
 		_grid[cell.y][cell.x] = color_index
 		_pops[cell] = 0.0
@@ -342,19 +455,36 @@ func _fit(at: Vector2i, color_index: int) -> void:
 ## Wipes the half of the board the bomb landed in.## Wipes the half of the board the bomb landed in. The split is along the
 ## horizontal midline, so the player can aim it at whichever half is worse.
 ## Nothing is scored for the bomb cell itself -- only for what it destroys.
-func _detonate(at: Vector2i) -> void:
-	@warning_ignore("integer_division")
-	var half := grid / 2
-	var from_row: int = 0 if at.y < half else half
-	var to_row: int = from_row + half - 1
+func _detonate(at: Vector2i, level := 1) -> void:
+	var spec: Dictionary = BOMB_BY_LEVEL[_lvl(level)]
+	var radius: int = int(spec["radius"])
+	var doomed := {}
+
+	for y in range(at.y - radius, at.y + radius + 1):
+		for x in range(at.x - radius, at.x + radius + 1):
+			if x >= 0 and x < grid and y >= 0 and y < grid:
+				doomed[Vector2i(x, y)] = true
+	if bool(spec["row"]):
+		for x in grid:
+			doomed[Vector2i(x, at.y)] = true
+	if bool(spec["half"]):
+		@warning_ignore("integer_division")
+		var half := grid / 2
+		var top: int = 0 if at.y < half else half
+		for y in range(top, top + half):
+			for x in grid:
+				doomed[Vector2i(x, y)] = true
 
 	var cleared := 0
-	for y in range(from_row, to_row + 1):
-		for x in grid:
-			if _grid[y][x] != EMPTY:
-				cleared += 1
-				_grid[y][x] = EMPTY
-				_pops.erase(Vector2i(x, y))
+	var from_row := grid
+	var to_row := 0
+	for cell: Vector2i in doomed:
+		from_row = mini(from_row, cell.y)
+		to_row = maxi(to_row, cell.y)
+		if _grid[cell.y][cell.x] != EMPTY:
+			cleared += 1
+			_grid[cell.y][cell.x] = EMPTY
+			_pops.erase(cell)
 
 	var points := cleared * BOMB_POINTS_PER_CELL
 	score += points
