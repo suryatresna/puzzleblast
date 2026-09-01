@@ -29,10 +29,10 @@ func _rebuild() -> void:
 	var level := Progress.level()
 	%LevelLabel.text = "LEVEL %d" % level
 	var to_next := Progress.threshold(level + 1)
-	%XpLabel.text = "%s / %s" % [_commas(Progress.total_score()), _commas(to_next)]
+	%XpLabel.text = "%s / %s" % [Progress.commas(Progress.total_score()), Progress.commas(to_next)]
 	%XpFill.scale.x = Progress.level_progress()
 	%Stats.text = "%s lifetime  ·  %d day streak  ·  %d days played" % [
-		_commas(Progress.total_score()), Progress.streak(), Progress.days_played(),
+		Progress.commas(Progress.total_score()), Progress.streak(), Progress.days_played(),
 	]
 
 	var pending := Progress.pending_unlocks()
@@ -163,11 +163,3 @@ func _confirm_reset() -> void:
 	_rebuild()
 
 
-static func _commas(n: int) -> String:
-	var s := str(n)
-	var out := ""
-	for i in s.length():
-		if i > 0 and (s.length() - i) % 3 == 0:
-			out += ","
-		out += s[i]
-	return out

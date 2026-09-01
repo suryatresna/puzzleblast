@@ -403,6 +403,17 @@ func touch_day() -> bool:
 	return true
 
 
+## Thousands separators, for the screens that display these numbers.
+static func commas(n: int) -> String:
+	var digits := str(absi(n))
+	var out := ""
+	for i in digits.length():
+		if i > 0 and (digits.length() - i) % 3 == 0:
+			out += ","
+		out += digits[i]
+	return ("-" + out) if n < 0 else out
+
+
 # --- persistence -------------------------------------------------------------
 
 func _ensure_loaded() -> void:

@@ -5,7 +5,11 @@ extends Control
 func _ready() -> void:
 	%Title.text = App.game_wordmark()
 	%Version.text = "v%s" % App.game_version
-	%Best.text = "best  %d" % Scores.best() if not Scores.is_empty() else ""
+	# Level and lifetime score rather than a best: this screen is now the front
+	# of a progression, and the best score still lives on the leaderboard.
+	%Best.text = "LEVEL %d" % Progress.level()
+	if Progress.total_score() > 0:
+		%Best.text += "   ·   %s" % Progress.commas(Progress.total_score())
 	# Game Center sign-in is async and usually lands after this screen is up,
 	# so the greeting is set now and again whenever authentication changes.
 	GameServices.authentication_changed.connect(_sync_greeting)
