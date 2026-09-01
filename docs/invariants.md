@@ -90,6 +90,16 @@ inside `blocks.gd` — miss one form and the grep looks clean.
   measured within six luminance values of the text behind it and the score
   vanished. Measure; do not eyeball.
 
+## Native plugin queues
+
+**Never drain a native queue with a bare `while count > 0`.** `GameServices`
+pumps the Game Center plugin every frame on the main thread, and the queue
+belongs to code this project does not control. A pop that fails to consume turns
+that loop into a device-wide freeze with no error and nothing in the log — the
+phone simply stops responding. The pump is bounded twice: a per-frame cap, and a
+check that the count actually fell. If it did not, it warns once and stands
+down.
+
 ## Input
 
 - **`_begin_drag` must set `_drag_from`.** `_update_drag` returns immediately

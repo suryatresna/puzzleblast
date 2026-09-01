@@ -91,6 +91,9 @@ var _auth_timer := AUTH_FIRST_DELAY
 var _auth_recoveries := 0
 
 
+var _queue_stuck := false
+
+
 func _ready() -> void:
 	set_process(false)
 	if not _bind():
@@ -222,15 +225,49 @@ func _bind() -> bool:
 	return true
 
 
+## Latched so a broken plugin warns once, not sixty times a second.
+
+
+
+## Most events a frame will ever carry. The queue holds authentication results
+## and leaderboard acknowledgements, which arrive a handful at a time; anything
+## past this is the plugin misbehaving, not a real backlog.
+const MAX_EVENTS_PER_FRAME := 32
+
+
 ## The plugin reports results through a queue rather than signals, so it has to
 ## be drained each frame.
+##
+## Bounded twice, because this runs on the main thread on a phone and the queue
+## belongs to native code we do not control. It used to be a bare
+## `while count > 0: pop()`, which trusts the plugin to decrement -- and if a
+## pop ever fails to consume, that spins forever and the whole device stops
+## responding, with no error and nothing in the log.
 func _process(delta: float) -> void:
 	if _gc == null or not _gc.has_method("get_pending_event_count"):
 		set_process(false)
 		return
 	_attempt_auth(delta)
-	while int(_gc.call("get_pending_event_count")) > 0:
+
+	var drained := 0
+	while drained < MAX_EVENTS_PER_FRAME:
+		var pending := int(_gc.call("get_pending_event_count"))
+		if pending <= 0:
+			return
 		_handle(_gc.call("pop_pending_event"))
+		drained += 1
+		# The pop must actually shorten the queue. If it did not, the plugin is
+		# not draining and looping again would hang the frame -- stop, and say
+		# so once rather than every frame forever.
+		if int(_gc.call("get_pending_event_count")) >= pending:
+			if not _queue_stuck:
+				_queue_stuck = true
+				push_warning("GameServices: event queue is not draining (%d pending);"
+					% pending + " giving up on it to keep the frame alive.")
+			set_process(false)
+			return
+	# Hit the per-frame cap with events still waiting: fine, take the rest next
+	# frame rather than blocking this one.
 
 
 func _handle(event: Variant) -> void:
