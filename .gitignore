@@ -3,15 +3,16 @@
 /android/
 
 # Platform export output
-/build/
 *.ipa
 *.apk
 *.aab
 
-# iOS export artifacts, if exported into the project root
-/puzzle.xcodeproj/
-/puzzle/
-/puzzle.pck
+# iOS export artifacts, if exported into the project root. The names track the
+# export target in export_presets.cfg -- they were `puzzle` before the project
+# settled on Pixel Blast, and matched nothing.
+/pixblast.xcodeproj/
+/pixblast/
+/pixblast.pck
 /*.xcframework/
 /PrivacyInfo.xcprivacy
 
