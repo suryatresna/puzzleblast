@@ -3,6 +3,60 @@
 There is no test framework, linter or build script. Verification is done by
 writing a throwaway scene plus script, running it headless, and deleting it.
 
+## End-to-end
+
+```bash
+"$GODOT" --headless --path . res://tools/e2e.tscn
+```
+
+Boots the app, walks every `App.SCENE_*` route asserting the scene actually
+changed, plays a game by synthesising pointer events, fires a power off the
+strip, ends the run and checks it was recorded and persisted.
+
+**This is the only test that goes through `App.goto_scene` and `_input`.**
+Everything else in this repo drives `_board.place()` or `_fire_power()`
+directly, which is how a completely dead drag path once survived a whole
+feature's worth of tests. It wipes `user://` progress and writes a leaderboard
+row.
+
+Two things it taught, both of which will bite anyone writing a similar test:
+
+- **`_input` returns early once `_board.alive` is false.** Play until nothing
+  fits and every later press is silently swallowed. Restart the board before
+  testing anything that needs input.
+- **A surviving run can still have a completely full board.** Charge in the bank
+  keeps the run alive past a dead tray, so "alive" does not mean "has an empty
+  cell". A power that needs one has nowhere to go.
+
+To place a piece at a chosen cell, invert what `_update_drag` does — and read
+the carried piece's real `piece_pixel_size()` rather than deriving it from the
+cell count:
+
+```gdscript
+pointer = board.global_position + Vector2(target) * cell \
+        + drag_view.piece_pixel_size() * 0.5 \
+        + Vector2(0.0, game.DRAG_LIFT_CELLS * cell)
+```
+
+Judge success by the tray slot emptying, **not** by the board's fill count: a
+placement that completes a line clears it, so the board can end up emptier than
+it started.
+
+## --headless renders at the wrong size
+
+`--headless` gives a **1920x1920 square** viewport, not the project's 1080x1920.
+A scene left to size itself from it lays out at 158px cells instead of 128px:
+
+```
+viewport under --headless: (1920, 1920)     board 1267px, cell 158
+size forced to 1080x1920:  board 1048px, cell 128   <- the real layout
+```
+
+So **any layout assertion made headlessly is measuring the wrong thing** unless
+the harness sets `size = Vector2(1080, 1920)` on the scene root itself. Logic
+tests are unaffected; anything about geometry needs the forced size, or a
+windowed Movie Maker capture.
+
 ## The path audit
 
 Run this after anything moves:
