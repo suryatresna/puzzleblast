@@ -623,8 +623,9 @@ func _on_game_over() -> void:
 	# source of truth either way.
 	GameServices.submit_score(_board.score, Modes.current)
 	_board.best = Scores.best(Modes.current)
-	if rank == 1:
+	if rank == 1 or levels_gained > 0:
 		_overlay.celebrate(get_viewport_rect().size)
+	_show_level_up(levels_gained)
 	%FinalScore.text = str(_board.score)
 	%FinalBest.text = "%d lines cleared" % _board.lines
 	%RankLabel.text = _rank_text(rank)
@@ -637,6 +638,40 @@ func _on_game_over() -> void:
 		title.text = "NO ROOM\nLEFT"
 	%GameOverPanel.show()
 	%RetryButton.grab_focus()
+
+
+## The end-of-run level readout. Levels are only ever gained here, so this is
+## the one place a player finds out -- it gets the confetti and a banner, not a
+## line of small print.
+func _show_level_up(gained: int) -> void:
+	%LevelUp.visible = gained > 0
+	%LevelUpNote.visible = gained > 0
+	if gained <= 0:
+		return
+	%LevelUp.add_theme_color_override("font_outline_color",
+		Themes.value("ink", Color.BLACK))
+	%LevelUp.text = "LEVEL %d" % Progress.level() if gained == 1 \
+		else "LEVEL %d   (+%d)" % [Progress.level(), gained]
+
+	# Say what the level actually bought, since that is the reason to care.
+	var earned: Array[String] = []
+	if Progress.pending_unlocks() > 0:
+		earned.append("a new power to choose")
+	for l in range(Progress.level() - gained + 1, Progress.level() + 1):
+		var r: Dictionary = Progress.REWARDS.get(l, {})
+		if r.has("theme"):
+			earned.append("%s theme" % Themes.theme_name(int(r["theme"])))
+		if r.has("charge"):
+			earned.append("+%d charge" % int(r["charge"]))
+		if l == Progress.BIG_BOARD_LEVEL:
+			earned.append("a bigger board")
+	%LevelUpNote.text = "Unlocked: " + ", ".join(earned) if not earned.is_empty() \
+		else "Keep going."
+
+	# No floating banner here: combo_banner_text draws at screen centre, which
+	# is exactly where the game-over panel puts this label, and the two
+	# collided. The confetti plus the panel's own line carry it.
+	Haptics.celebrate(get_tree())
 
 
 func _rank_text(rank: int) -> String:
@@ -690,6 +725,7 @@ func _cancel_drag() -> void:
 func _restart() -> void:
 	%PausePanel.hide()
 	%GameOverPanel.hide()
+	_show_level_up(0)
 	_cancel_drag()
 	_kill_deal_tweens()
 	for i in _slots.size():
