@@ -210,8 +210,11 @@ func _kill_deal_tweens() -> void:
 func _sync_powers() -> void:
 	if _power_slots.is_empty():
 		return
-	%PowerBar.visible = _powers_enabled
-	if not _powers_enabled:
+	# Hidden outright until the first slot unlocks at level 2. An empty strip
+	# with a charge meter on it promises a currency the player has nothing to
+	# spend on -- and cannot earn a power with, since powers come from levels.
+	%PowerBar.visible = _powers_enabled and Progress.loadout_size() > 0
+	if not %PowerBar.visible:
 		return
 	for i in _power_slots.size():
 		var slot: Control = _power_slots[i]
@@ -781,6 +784,10 @@ func _bank(score: int) -> void:
 func _celebrate_level(gained: int) -> void:
 	_level_aura = true
 	_roll_xp(gained)
+	# A level can grant the first loadout slot, which is what brings the power
+	# strip on screen. Nothing else re-syncs it: `loadout_changed` fires when a
+	# power is equipped, and at this point none is.
+	_sync_powers()
 	var tint: Color = Themes.text_color("highlight")
 	# Only part-way to the tint. The combo flow can afford a full wash because
 	# its colours are dark enough to sit under the board; the highlight colour
