@@ -74,6 +74,7 @@ The full harness recipe, its four gotchas, and how to capture screenshots are in
 | `docs/testing.md` | The throwaway-scene harness, gotchas, screenshots, the audit |
 | `docs/history.md` | What was removed and why -- difficulty, the Tetris prototype |
 | `docs/gamecenter.md` | Game Center setup that cannot be done from this repo |
+| `docs/plan/tutorial.md` | How the game teaches itself: the coach ladder and the free bomb |
 | `docs/plan/` | Forward-looking proposals, not descriptions of what exists — each carries a status banner |
 
 ## The one thing to know first

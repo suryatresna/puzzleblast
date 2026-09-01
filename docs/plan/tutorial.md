@@ -1,7 +1,9 @@
 # Plan: teaching the game
 
-> **Status: not started.** Nothing here exists yet. The only onboarding today is
-> one static line in `scenes/game.tscn`.
+> **Status: delivered.** The coach ladder, the free tutorial bomb and the
+> How to play screen all shipped. Open questions that remain: whether to gate
+> to one new hint per run, and the copy for rungs 8-11 has not been seen in
+> play. See `ui/widgets/coach.gd` for what exists.
 
 How to teach thirteen powers, a charge economy, a skill tree and four modes
 without a modal tutorial — and without touching `game.gd`'s input handling.

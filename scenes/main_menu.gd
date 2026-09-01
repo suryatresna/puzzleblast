@@ -27,6 +27,7 @@ func _ready() -> void:
 	%ProfileButton.pressed.connect(App.goto_scene.bind(App.SCENE_PROFILE))
 	%LeaderboardButton.pressed.connect(App.goto_scene.bind(App.SCENE_LEADERBOARD))
 	%SettingsButton.pressed.connect(App.goto_scene.bind(App.SCENE_SETTINGS))
+	%HowToPlayButton.pressed.connect(App.goto_scene.bind(App.SCENE_HOW_TO_PLAY))
 	%AboutButton.pressed.connect(App.goto_scene.bind(App.SCENE_ABOUT))
 	%ExitButton.pressed.connect(App.quit_game)
 

@@ -130,6 +130,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Settings"
 
+[node name="HowToPlayButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "How to Play"
+
 [node name="AboutButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
 unique_name_in_owner = true
 layout_mode = 2
