@@ -89,7 +89,7 @@ Frames are named `f00000000.png`. The game auto-pauses on focus loss (see `_noti
 ### Autoloads
 
 - **`App`** (`scripts/app.gd`) — a `CanvasLayer` at layer 128 owning scene routing and the fade overlay. Always navigate with `App.goto_scene(App.SCENE_*)`; it drops re-entrant calls so a double-tap cannot load two scenes. Also exposes `game_name` / `game_version` read from project settings.
-- **`Scores`** (`scripts/scores.gd`) — the local leaderboard, persisted to `user://scores.cfg`. Top 10 **per mode**, so filtering never leaves a mode with one row, and `submit()` returns the rank within that mode. `best()` is the overall best (the menu); `best(mode)` is per-mode (the HUD) — a Sprint score and an endless run are not comparable. Rows written before modes existed carry a difficulty `level` and no mode; they migrate to Palette on load. Single source of truth for the best score; nothing else should write a save file.
+- **`Scores`** (`scripts/scores.gd`) — the local leaderboard, persisted to `user://scores.cfg`. Top 10 **per mode**, so filtering never leaves a mode with one row, and `submit()` returns the rank within that mode. `best()` is the overall best (the menu); `best(mode)` is per-mode (the HUD) — a Sprint score and an endless run are not comparable. Rows written before modes existed carry a `level` from the removed difficulty system and no mode; the loader ignores the field and migrates them to Palette. Single source of truth for the best score; nothing else should write a save file.
 - **`Themes`** (`scripts/themes.gd`) — the theme registry. See **Theming** below.
 - **`Modes`** (`scripts/modes.gd`) — game modes. `PALETTE` is the endless game the project has always had; `SPRINT` runs a 60-second fuse; `PUZZLE` deals a seeded starting board with a lines-to-clear objective. `current` must be set **before** routing to the play screen — `game.gd` reads it once in `_setup_mode()`, which `_restart()` calls. Owns the `[modes]` section of `user://settings.cfg`.
 - **`GameServices`** (`scripts/game_services.gd`) — Apple Game Center: authenticate on launch, greet the signed-in player on the welcome page, submit every finished run, open Apple's leaderboard UI. Godot 4 has **no built-in Game Center module** (it moved out of the engine after 3.x), so this binds at runtime to the `GameCenter` singleton from godot-ios-plugins. Guarded twice — iOS *and* singleton present — so it is a silent no-op in the editor, on desktop, on Android, and on an iOS build without the plugin. The local `Scores` table stays the source of truth; nothing may depend on Game Center succeeding. Setup that cannot be done from this repo is in `docs/gamecenter.md`.
@@ -141,7 +141,7 @@ The three newest differ from the first five in kind, not just in numbers:
 
   Two things are deliberately *not* restored, and both are load-bearing. **`board.best` and `game.gd._banked`** are high-water marks; restoring them would let the same points bank as XP twice (`_bank()` only sends deltas above `_banked`, and `Progress.add_score` has no un-bank path and saves to disk immediately). **Charge and power uses** are spent for good — which is what prices out the loop: rewind restores the board but not the charge a combo paid, so clear → rewind → re-clear only loses money while `COST[REWIND] > max(CHARGE_PER_COMBO)`. That is a constraint, not a balance preference; there is a test asserting it. A refused cast calls `_drop_history()` so a misfire cannot leave a phantom step that rewinds to where the player already is.
 
-  Sprint's fuse is restorable state (`fuse_bar.gd` accumulates pure delta) and is deliberately left alone — rewinding time would make the mode meaningless. `Difficulty` only ever tightens, so a rewound run keeps the harder band.
+  Sprint's fuse is restorable state (`fuse_bar.gd` accumulates pure delta) and is deliberately left alone — rewinding time would make the mode meaningless.
 
   Its effect is a **held state**, not a bang — see *Power atmospheres* below.
 
@@ -209,6 +209,23 @@ Watch the token names: `#241C16` is the dark **panel**, but the dark **board** i
 
 **Pixel geometry.** The design is 270×480 with 32px tiles; the game runs at 1080×1920, exactly 4×. Sprites are therefore generated pre-upscaled (a 32px tile is stored at 128px) rather than relying on filtering — `StyleBoxTexture` nine-patch margins are measured in texture pixels and are *not* scaled when drawn, so a 48px plate with a 12px margin would render tiny corners. `base_margin = 28` on the game screen gives a 1024px board and exactly 128px cells. Under a pixel theme `cell_size()` floors, `grid_origin()` centres the remainder, and `shake_offset` rounds to whole pixels.
 
+### Removed: the difficulty ramp
+
+`Difficulty` was an autoload that widened four score bands within a run (Easy →
+Super Hard), tightening the deal and calling itself out with a banner. It has
+been deleted: levelling covers progression now, and by the end only one of its
+knobs was still connected. `tray_special` and `combo_power` died with the move
+to the charge strip, leaving just `small_bias` — 2.6 for the first 800 points,
+1.0 from there — so **the only gameplay it still changed was a gentler opening
+deal**. `Blocks.random_piece()` already defaults to a bias of 1.0, so removing
+it is the whole change.
+
+The HUD line dropped its suffix (`best 8420 · Super Hard` → `best 8420`); the
+level and XP bar in the top bar say what the old band suffix used to.
+
+Old leaderboard rows still carry a `level` string from it. `scores.gd` never
+reads the field, so nothing needs migrating.
+
 ### Game modes
 
 Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
@@ -260,10 +277,10 @@ Two layout traps seen in this repo:
 ## Known gaps
 
 - Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
-- The leaderboard tags every row with its mode and filters by it; difficulty level is no longer recorded or shown anywhere.
+- The leaderboard tags every row with its mode and filters by it.
 - `scenes/profile.tscn` shows level, XP, streak and the power **skill tree** (in a `ScrollContainer`, so it grows without a layout change), and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
 - `scenes/modes.tscn` covers Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
-- `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. Difficulty is deliberately absent — it follows the score during a run, so there is nothing to set. The design's RESTORE PURCHASES is not built — there is no IAP.
+- `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. The design's RESTORE PURCHASES is not built — there is no IAP.
 - Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.
 - `assets/audio/music/theme.wav` and `assets/audio/sfx/game_over.wav` are superseded and unreferenced.
 - Music files must **not** loop — the playlist advances on `finished`, so a looping track would never hand over. `Audio._set_loop` clears the flag on every track it plays. If you ever do need a looping WAV, setting `loop_mode` without also setting `loop_end` yields a zero-length loop: `playing` stays true, the position never advances, and the track is silent. `--headless` and Movie Maker both use the Dummy audio driver, so audio bugs only surface in a real windowed run.

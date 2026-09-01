@@ -28,7 +28,7 @@ const BLAST_MS := 60
 const BLAST_AMP := 1.0
 
 ## A single placement can set off several of these at once -- the piece landing,
-## a line clearing, a combo reward, a difficulty step. Android restarts the
+## a line clearing, a combo reward, a power firing. Android restarts the
 ## motor on every call, so back-to-back buzzes run together into one long
 ## rumble that feels stuck. Within this window only a stronger buzz gets
 ## through; weaker ones are dropped.

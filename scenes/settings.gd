@@ -7,10 +7,7 @@ extends "res://scripts/menu_screen.gd"
 ##
 ## The theme is deliberately absent: it is a build-time choice (see
 ## `Themes.ACTIVE`), not a user setting.
-##
-## Difficulty is not listed here: it follows the score during a run rather
-## than being chosen, so there is nothing to set and nothing worth explaining
-## on a settings screen.
+
 
 const Haptics := preload("res://scripts/haptics.gd")
 const ToggleSwitch := preload("res://scripts/toggle_switch.gd")

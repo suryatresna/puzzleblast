@@ -27,9 +27,6 @@ const DEAL_DELAY := 0.12
 const DEAL_STAGGER := 0.07
 const DEAL_TIME := 0.34
 
-## Streak length that earns a bomb comes from the difficulty setting; a bomb is
-## awarded once per streak, so a 5x run hands out one rather than four.
-
 ## Colours for the combo badge: muted with no streak running, gold once the
 ## multiplier is actually worth something.
 ## Fallbacks only -- see `_combo_color`, which reads the active theme.
@@ -106,7 +103,6 @@ func _ready() -> void:
 
 	_board.score_changed.connect(_on_score_changed)
 	_board.piece_placed.connect(_on_piece_placed)
-	Difficulty.tightened.connect(_on_difficulty_tightened)
 	_board.bomb_detonated.connect(_on_bomb_detonated)
 	_board.laser_fired.connect(_on_laser_fired)
 	_board.diagonal_fired.connect(_on_diagonal_fired)
@@ -158,9 +154,8 @@ func _process(delta: float) -> void:
 
 func _refill_tray() -> void:
 	_tray.clear()
-	var bias: float = Difficulty.small_piece_bias()
 	for i in TRAY_SIZE:
-		_tray.append(Blocks.random_piece(bias))
+		_tray.append(Blocks.random_piece())
 	_sync_tray()
 	_deal_animation()
 
@@ -785,8 +780,7 @@ func _check_game_over() -> void:
 func _on_score_changed(score: int, best: int, combo: int) -> void:
 	_bank(score)
 	%ScoreValue.set_value(score)
-	Difficulty.update(score)
-	%BestValue.text = "best  %d   ·   %s" % [best, Difficulty.level_name()]
+	%BestValue.text = "best  %d" % best
 	_sync_xp()
 	_show_combo(combo)
 
@@ -876,13 +870,6 @@ func _pulse_combo() -> void:
 
 ## Called out so the ramp is visible: the deal quietly getting stingier with no
 ## explanation would just read as bad luck.
-func _on_difficulty_tightened(level: int) -> void:
-	var screen: Vector2 = get_viewport_rect().size
-	_overlay.popup("%s" % Difficulty.name_of(level).to_upper(),
-		screen * Vector2(0.5, 0.30), Color(1, 0.55, 0.2), false)
-	Haptics.clear_lines(2)
-
-
 func _celebrate_best() -> void:
 	var area: Vector2 = get_viewport_rect().size
 	_overlay.celebrate(area)
@@ -1331,7 +1318,6 @@ func _restart() -> void:
 	_banked = 0
 	_levels_this_run = 0
 	_level_aura = false
-	Difficulty.reset()
 	_background.tint_to(Color.WHITE, 0.0, 0.2)
 	_shake = 0.0
 	_best_at_start = Scores.best(Modes.current)
