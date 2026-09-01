@@ -71,6 +71,14 @@ var _aura_tween: Tween
 ## Which step of the background flow the run is on. -1 means the default
 ## palette; it only ever moves forward, and the backdrop keeps the last colour.
 var _flow_step := -1
+## How much of this run's score has already been banked as XP. Score is fed to
+## Progress as it is earned rather than in one lump at game over, so a level can
+## land mid-run -- which is the point of the aura.
+var _banked := 0
+var _levels_this_run := 0
+## True while the screen is wearing the level-up colour. The next combo takes
+## the background back, which is what clears it.
+var _level_aura := false
 
 
 func _ready() -> void:
@@ -384,6 +392,7 @@ func _check_game_over() -> void:
 # --- board reactions ---------------------------------------------------------
 
 func _on_score_changed(score: int, best: int, combo: int) -> void:
+	_bank(score)
 	%ScoreValue.set_value(score)
 	Difficulty.update(score)
 	%BestValue.text = "best  %d   ·   %s" % [best, Difficulty.level_name()]
@@ -448,7 +457,18 @@ func _show_combo(combo: int) -> void:
 ## streak's colour until another streak moves it along.
 func _advance_flow() -> void:
 	_flow_step += 1
+	_level_aura = false
 	_background.tint_to(_overlay.flow_color(_flow_step), 1.0)
+
+
+## Drops the level-up colour and returns the backdrop to wherever the combo
+## flow had it.
+func _restore_flow() -> void:
+	_level_aura = false
+	if _flow_step < 0:
+		_background.tint_to(Color.WHITE, 0.0, 0.45)
+	else:
+		_background.tint_to(_overlay.flow_color(_flow_step), 1.0, 0.45)
 
 
 func _pulse_combo() -> void:
@@ -518,6 +538,10 @@ func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) 
 	# once per streak rather than once per clear.
 	if _board.combo == 2:
 		_advance_flow()
+	elif _level_aura and _board.combo >= 2:
+		# Mid-streak when the level landed: put the flow colour back rather
+		# than stepping it, which would skip a rung.
+		_restore_flow()
 	_wash_background(_board.combo, screen)
 	_overlay.combo_banner(_board.combo, screen * Vector2(0.5, 0.46))
 	_overlay.points_popup("+%d" % points, screen * Vector2(0.5, 0.60),
@@ -616,7 +640,10 @@ func _on_game_over() -> void:
 	Haptics.stop()               # nothing should still be buzzing on game over
 	# Every run banks its score as XP, win or lose -- a bad run still advances
 	# something, which is the property the game lacked entirely.
-	var levels_gained: int = Progress.add_score(_board.score)
+	# Most of the run is already banked; this only picks up whatever landed
+	# after the last score_changed.
+	_bank(_board.score)
+	var levels_gained: int = _levels_this_run
 	var rank: int = Scores.submit(_board.score, _board.lines, Modes.current)
 	# Game Center gets every finished run. The call is a no-op off iOS, and
 	# queues if sign-in has not landed yet, so the local table stays the
@@ -638,6 +665,47 @@ func _on_game_over() -> void:
 		title.text = "NO ROOM\nLEFT"
 	%GameOverPanel.show()
 	%RetryButton.grab_focus()
+
+
+## Banks the score earned since the last call. Only the delta goes across, so
+## feeding continuously and topping up at game over cannot double-count.
+func _bank(score: int) -> void:
+	var delta := score - _banked
+	if delta <= 0:
+		return
+	_banked = score
+	var gained := Progress.add_score(delta)
+	if gained <= 0:
+		return
+	_levels_this_run += gained
+	_celebrate_level()
+
+
+## A level landed mid-run. Wash the screen in the level colour and light the
+## aura; the next combo puts the background back, because `_advance_flow` and
+## `_wash_background` reclaim it.
+func _celebrate_level() -> void:
+	_level_aura = true
+	var tint: Color = Themes.text_color("highlight")
+	# Only part-way to the tint. The combo flow can afford a full wash because
+	# its colours are dark enough to sit under the board; the highlight colour
+	# is not, and this one PERSISTS until a combo clears it -- so the player
+	# would be reading tiles off a bright gold field until then.
+	_background.tint_to(tint, 0.55, 0.35)
+
+	if _aura_tween and _aura_tween.is_valid():
+		_aura_tween.kill()
+	# Brighter and longer than a combo wash: this happens a handful of times a
+	# session, not several times a run.
+	_aura.color = Color(tint.r, tint.g, tint.b, 0.30)
+	_aura_tween = create_tween()
+	_aura_tween.tween_property(_aura, "color", Color(tint.r, tint.g, tint.b, 0.0), 2.2) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+	var screen: Vector2 = get_viewport_rect().size
+	_overlay.combo_banner_text("LEVEL %d" % Progress.level(), tint)
+	_overlay.celebrate(screen)
+	Haptics.celebrate(get_tree())
 
 
 ## The end-of-run level readout. Levels are only ever gained here, so this is
@@ -744,6 +812,9 @@ func _restart() -> void:
 	_aura.color = Color(0, 0, 0, 0)
 	# A new run starts from the default palette again.
 	_flow_step = -1
+	_banked = 0
+	_levels_this_run = 0
+	_level_aura = false
 	Difficulty.reset()
 	_background.tint_to(Color.WHITE, 0.0, 0.2)
 	_shake = 0.0

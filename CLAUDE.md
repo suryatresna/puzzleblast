@@ -191,6 +191,8 @@ Powers no longer appear in the tray. They are unlocked by levelling, equipped to
 - **`can_target()` gates power placement**, not `can_place()`. Only destructive powers may be aimed at an occupied cell; `MORPH` and `FIT` both assign into `_grid` at the target, so relaxing them would silently recolour a block.
 - **In `_fire_power`, read the level before spending and spend after `place()` returns.** Spending records a use and can level the power up mid-shot, and a drop the board refuses must not bill the player.
 - **`_check_game_over()` replaces the bare `has_any_move` test.** A dead tray does not end the run while a charged power remains. `board.gd` knows nothing about this; `game.gd` decides when to call `declare_game_over`.
+- **Score is banked as XP continuously**, not in one lump at game over: `game.gd._bank()` sends only the delta since the last call, so a level can land mid-run and feeding it twice cannot double-count. `_on_game_over` just tops up the remainder.
+- A mid-run level-up washes the backdrop in the highlight colour at **0.55**, not the full 1.0 the combo flow uses. That tint *persists* until a combo reclaims it, and the highlight colour is far lighter than the flow colours — at full strength the player reads tiles off a bright gold field.
 - The menu's first entry reads **New Game** or **Continue** depending on `Progress.has_progress()`. Both do the same thing — progression always carries over — the label only stops "New Game" reading like a reset.
 - Powers are disabled in Puzzle mode — a seeded board plus a levelled bomb is not the same puzzle for two players.
 
