@@ -82,16 +82,80 @@ it seen.
 | 3 | a tray card is dimmed | greyed cards fit nowhere — plan around them |
 | 4 | after the first clear | clear again next turn to build a combo |
 | 5 | combo reaches 2 | two lines at once scores 4× two singles |
-| 6 | `pending_unlocks > 0` | you've earned a power — choose it on the Profile |
-| 7 | the strip first appears | drag a power onto the board like a card |
-| 8 | charge < the cheapest equipped cost | combos charge your powers |
-| 9 | tray dead, a power affordable | a charged power can save a stuck board |
-| 10 | after the first game over | every run banks XP, win or lose |
+| 6 | the strip first appears, tutorial bomb pending | a free bomb — drag it onto the board |
+| 7 | the tutorial bomb has been fired | that one was free; powers cost charge |
+| 8 | `pending_unlocks > 0` | you've earned a power — choose it on the Profile |
+| 9 | charge < the cheapest equipped cost | combos charge your powers, 2× and up |
+| 10 | tray dead, a power affordable | a charged power can save a stuck board |
+| 11 | after the first game over | every run banks XP, win or lose |
 
 **Recurring, deliberately outside the seen-once ladder:** the 2× nudge
 (`plays_today == PLAYS_FOR_BONUS - 1`) is a prompt, not a lesson, and should fire
 every time it is true. `game.gd._bonus_hint()` already writes this on the
 game-over panel; the coach should not duplicate it mid-run.
+
+### The power tutorial: one free bomb
+
+Powers are the hardest thing here to discover — a strip of icons that costs a
+currency earned from a mechanic nobody has explained. It needs a worked example,
+and the bomb is the right one: **half the board vanishing is unmistakable**,
+where Fit or Collapse are subtle enough that a first-timer may not notice
+anything happened.
+
+**But the bomb is unreachable.** It sits in tier 5, gated at level 50 —
+8,995,387 lifetime score, roughly 300 days of committed play. Tier 1 (Fit,
+Collapse) is what a new player actually owns. So the tutorial cannot use the
+bomb the player has; it has to hand them one.
+
+**A one-off free bomb, outside the tree and outside the economy.** Granted the
+first time the power strip appears (level 2, when the first loadout slot
+unlocks), it sits in the strip beside the real slot, marked **FREE** rather than
+with a charge cost, and is consumed by one use.
+
+That teaches the whole loop in a single cast:
+
+1. powers live in the strip
+2. you drag them onto the board like a card
+3. they do something dramatic
+4. …and then rung 7 lands: *that one was free; powers cost charge* — which is
+   the moment the charge meter under the strip starts meaning something.
+
+It also gives the player a reason to look at the Profile, because the next power
+is one they have to choose.
+
+**Why not just move the bomb to tier 1?** Because the tree is ordered by charge
+cost and the bomb is the most expensive power in the game at 8. Reordering it
+would either break that ordering or misprice the bomb. A scripted gift is
+honest: it is a lesson, not a reward.
+
+**Implementation.** `Progress` gains `_tutorial_power_used: bool` (persisted
+beside `seen_hints`) with `tutorial_power_pending()` and `use_tutorial_power()`.
+`game.gd._sync_powers()` renders one extra strip slot while pending;
+`_begin_drag` picks it up like any other power — the guard there tests
+`can_afford`, so the free bomb needs an explicit exemption — and `_fire_power`
+special-cases it to skip `Progress.spend()` and call `use_tutorial_power()`
+instead.
+
+`Blocks.bomb_piece()` already exists and is **currently unused** — a leftover
+from before powers moved to the strip. This gives it a purpose; otherwise it
+should be deleted.
+
+**The invariants this must not break:**
+
+- **It must not be free charge.** `use_tutorial_power()` sets the flag *before*
+  `place()` is called, or a board that refuses the drop hands out a second free
+  bomb. The existing rule is the opposite way round — read the level before
+  spending, spend after `place()` returns — so this is a deliberate exception
+  and needs saying at the call site.
+- **It must not appear in Puzzle mode**, where `_powers_enabled` is false and a
+  seeded board plus a bomb is not the same puzzle for two players.
+- **It must not survive a wipe.** `Progress.wipe()` resets it, so a reset
+  profile is taught again.
+- **The strip's slot count is level-derived** (`loadout_size()`), and
+  `_begin_drag` guards on `i >= loadout_size()`. The tutorial slot sits outside
+  that range, so both the render loop and the input loop need to know about it —
+  miss the second and the bomb is drawn but not draggable, which is exactly the
+  class of bug that killed dragging once already.
 
 ### Files
 
@@ -99,7 +163,8 @@ game-over panel; the coach should not duplicate it mid-run.
 |---|---|
 | `ui/widgets/coach.gd` | **New**, ~120 lines. Owns the ladder as a table and picks the current hint. Pure: takes state, returns an id and a string. |
 | `scenes/game.gd` | Call `_coach.refresh()` where the HUD already syncs — `_sync_tray`, `_on_lines_cleared`, `_sync_powers`, `_restart`. No new input paths. |
-| `autoload/progress.gd` | Persist `seen_hints: Array[int]` beside `seen_level`; `mark_hint_seen()` / `hint_seen()`. |
+| `autoload/progress.gd` | Persist `seen_hints: Array[int]` beside `seen_level`; `mark_hint_seen()` / `hint_seen()`. Plus `_tutorial_power_used` and its two accessors. |
+| `scenes/game.gd` (strip) | One extra slot while the tutorial bomb is pending, in **both** `_sync_powers` and `_begin_drag`; `_fire_power` skips the charge spend for it. |
 | `scenes/how_to_play.{tscn,gd}` | **New.** Static reference, built like `about.gd` on `MenuScreen`, rows from a table as `settings.gd` does. |
 | `scenes/main_menu.tscn` | One entry point to the above. |
 
@@ -129,6 +194,12 @@ obvious source.
 - **Extend `tools/e2e.tscn`** — it already boots the app and plays a real run.
   Assert a wiped profile sees hint #1 on its first frame, and that after the run
   the seen set has grown.
+- **The free bomb is free, once.** Fire it and assert charge is unchanged and the
+  flag is set; fire again and assert it is gone from the strip and the next cast
+  bills normally. Drop it off the board and assert it is **not** handed out
+  twice.
+- **Screenshot the bomb cast**, because "half the board vanished" is the entire
+  lesson and no assertion can tell you it read as dramatic.
 - **Screenshot the first-run state**, since a hint that is present but unreadable
   against the backdrop passes every assertion. `--headless` cannot judge this;
   use a windowed Movie Maker capture at 540×960 (see `docs/testing.md`).
@@ -144,6 +215,10 @@ obvious source.
 - **The recurring 2× nudge is the exception**, and exceptions in a seen-once
   system are where bugs live. Keep it structurally separate rather than adding a
   `repeatable` flag to the ladder.
+- **The tutorial bomb is the one piece of scripted state in an otherwise passive
+  design.** It is worth it — powers are the least discoverable system here — but
+  it is also the only part that can leave the strip in a state the economy did
+  not produce. Keep it to a single flag and a single use.
 - **Scope.** Hints 1–4 cover the actual first-run cliff and are roughly a third
   of the work. If this should ship small, ship those and the static screen; 5–10
   teach systems a player only meets after several sessions.
