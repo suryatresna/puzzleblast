@@ -69,10 +69,46 @@ size_flags_vertical = 4
 theme_override_font_sizes/font_size = 34
 text = "❚❚"
 
-[node name="Spacer" type="Control" parent="SafeArea/Layout/TopBar" unique_id=1349090678]
+[node name="XpBox" type="PanelContainer" parent="SafeArea/Layout/TopBar"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 mouse_filter = 2
+theme_type_variation = &"HudPanel"
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/TopBar/XpBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="XpKey" type="Label" parent="SafeArea/Layout/TopBar/XpBox/V"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "LEVEL 1"
+horizontal_alignment = 1
+
+[node name="XpTrack" type="Panel" parent="SafeArea/Layout/TopBar/XpBox/V"]
+clip_children = 1
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"BarTrack"
+
+[node name="XpFill" type="Panel" parent="SafeArea/Layout/TopBar/XpBox/V/XpTrack"]
+unique_name_in_owner = true
+scale = Vector2(0, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"BarFill"
 
 [node name="ComboBox" type="PanelContainer" parent="SafeArea/Layout/TopBar" unique_id=829957142]
 unique_name_in_owner = true

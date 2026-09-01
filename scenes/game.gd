@@ -44,6 +44,10 @@ const COMBO_HOT := Color(1, 0.83, 0.32)
 @onready var _atmosphere: Node2D = %ComboParticles
 @onready var _background: Control = %Background
 
+## Level-ups replayed on the XP bar in one go. A big clear can cross three at
+## once and the player should not sit through every one.
+const XP_ROLL_MAX := 3
+
 var _tray: Array = []          # TRAY_SIZE entries; {} means spent
 var _slots: Array[Control] = []
 ## Where the piece being dragged came from. The old `_drag_index >= 0` sentinel
@@ -79,6 +83,10 @@ var _levels_this_run := 0
 ## True while the screen is wearing the level-up colour. The next combo takes
 ## the background back, which is what clears it.
 var _level_aura := false
+var _xp_tween: Tween
+## While the bar is playing its roll-over, ordinary score updates must not
+## retarget it -- they would cut the celebration off mid-fill.
+var _xp_rolling := false
 
 
 func _ready() -> void:
@@ -222,6 +230,89 @@ func _sync_powers() -> void:
 	var maximum: int = maxi(1, Progress.max_charge())
 	%ChargeFill.scale.x = clampf(float(Progress.charge()) / float(maximum), 0.0, 1.0)
 	%Key.text = "%d/%d" % [Progress.charge(), maximum]
+
+
+## The XP plate in the top bar. It sits in the slack the bar already had
+## between the pause button and the combo plate, so it costs the board nothing
+## -- the row is still as tall as the combo plate, which is taller.
+func _sync_xp() -> void:
+	if _xp_rolling:
+		return
+	%XpKey.text = "LEVEL %d" % Progress.level()
+	var target := Progress.level_progress()
+	if _xp_tween and _xp_tween.is_valid():
+		_xp_tween.kill()
+	# Eased rather than snapped: a placement worth a few hundred points should
+	# visibly move the bar, which is the whole reason it is on screen.
+	_xp_tween = create_tween()
+	_xp_tween.tween_property(%XpFill, "scale:x", target, 0.25) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+
+
+## Runs the bar over the top once per level gained, then settles it on the new
+## level's true progress. Capped, because a huge single clear can cross two or
+## three levels and the player should not sit through all of them.
+func _roll_xp(gained: int) -> void:
+	if _xp_tween and _xp_tween.is_valid():
+		_xp_tween.kill()
+	_xp_rolling = true
+	var tint: Color = Themes.text_color("highlight")
+	var from: int = maxi(1, Progress.level() - gained)
+	# Lit for the WHOLE roll rather than at the turnover, where the colour fell
+	# inside a 0.1s drop and read as an ordinary fill. The bar is recoloured by
+	# swapping its stylebox, not by `modulate` -- modulate multiplies, and the
+	# fill is already dark, so tinting it gold only ever made it dimmer.
+	var box := _xp_box()
+	var base: Color = box.bg_color if box else Color.WHITE
+	if box:
+		box.bg_color = tint
+	_xp_tween = create_tween()
+	for i in mini(gained, XP_ROLL_MAX):
+		var reached := from + i + 1
+		_xp_tween.tween_property(%XpFill, "scale:x", 1.0, 0.32) \
+			.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+		_xp_tween.tween_callback(func() -> void:
+			%XpKey.text = "LEVEL %d" % reached
+			_punch_xp_key())
+		_xp_tween.tween_property(%XpFill, "scale:x", 0.0, 0.10)
+	_xp_tween.tween_callback(func() -> void: %XpKey.text = "LEVEL %d" % Progress.level())
+	_xp_tween.tween_property(%XpFill, "scale:x", Progress.level_progress(), 0.5) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	if box:
+		_xp_tween.parallel().tween_property(box, "bg_color", base, 0.5)
+	_xp_tween.tween_callback(_end_xp_roll)
+
+
+## A private copy of the fill's stylebox, so the roll can recolour it without
+## touching the theme every bar shares. Returns null under a theme whose BarFill
+## is a nine-patch rather than a flat box -- the roll still plays, unlit.
+func _xp_box() -> StyleBoxFlat:
+	%XpFill.remove_theme_stylebox_override("panel")
+	var sb: StyleBox = %XpFill.get_theme_stylebox("panel", "BarFill")
+	if not (sb is StyleBoxFlat):
+		return null
+	var box: StyleBoxFlat = (sb as StyleBoxFlat).duplicate()
+	%XpFill.add_theme_stylebox_override("panel", box)
+	return box
+
+
+## Drops the override so the bar goes back to following the theme -- otherwise a
+## theme swap would leave it wearing the old palette's colour.
+func _end_xp_roll() -> void:
+	_xp_rolling = false
+	%XpFill.remove_theme_stylebox_override("panel")
+
+
+## A scale punch on the level number, so the eye is pulled to the plate even if
+## the player was watching the board when the bar rolled.
+func _punch_xp_key() -> void:
+	var key: Label = %XpKey
+	key.pivot_offset = key.size * 0.5
+	var punch := create_tween()
+	punch.tween_property(key, "scale", Vector2(1.35, 1.35), 0.12) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	punch.tween_property(key, "scale", Vector2.ONE, 0.22) \
+		.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 
 
 func _sync_tray() -> void:
@@ -396,6 +487,7 @@ func _on_score_changed(score: int, best: int, combo: int) -> void:
 	%ScoreValue.set_value(score)
 	Difficulty.update(score)
 	%BestValue.text = "best  %d   ·   %s" % [best, Difficulty.level_name()]
+	_sync_xp()
 	_show_combo(combo)
 
 	# Overtaking the previous best is worth celebrating the moment it happens,
@@ -680,14 +772,15 @@ func _bank(score: int) -> void:
 	if gained <= 0:
 		return
 	_levels_this_run += gained
-	_celebrate_level()
+	_celebrate_level(gained)
 
 
 ## A level landed mid-run. Wash the screen in the level colour and light the
 ## aura; the next combo puts the background back, because `_advance_flow` and
 ## `_wash_background` reclaim it.
-func _celebrate_level() -> void:
+func _celebrate_level(gained: int) -> void:
 	_level_aura = true
+	_roll_xp(gained)
 	var tint: Color = Themes.text_color("highlight")
 	# Only part-way to the tint. The combo flow can afford a full wash because
 	# its colours are dark enough to sit under the board; the highlight colour
@@ -830,6 +923,8 @@ func _restart() -> void:
 	_board.best = Scores.best(Modes.current)
 	_refill_tray()
 	_sync_powers()
+	_end_xp_roll()
+	_sync_xp()
 
 
 func _leave() -> void:
