@@ -160,6 +160,121 @@ script = ExtResource("4_board")
 unique_name_in_owner = true
 script = ExtResource("5_fx")
 
+[node name="PowerBar" type="HBoxContainer" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="PowerSlot0" type="PanelContainer" parent="SafeArea/Layout/PowerBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SlotPanel"
+
+[node name="View" type="Control" parent="SafeArea/Layout/PowerBar/PowerSlot0"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Level" type="Label" parent="SafeArea/Layout/PowerBar/PowerSlot0"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 26
+theme_override_constants/outline_size = 8
+horizontal_alignment = 2
+vertical_alignment = 2
+text = ""
+
+[node name="PowerSlot1" type="PanelContainer" parent="SafeArea/Layout/PowerBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SlotPanel"
+
+[node name="View" type="Control" parent="SafeArea/Layout/PowerBar/PowerSlot1"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Level" type="Label" parent="SafeArea/Layout/PowerBar/PowerSlot1"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 26
+theme_override_constants/outline_size = 8
+horizontal_alignment = 2
+vertical_alignment = 2
+text = ""
+
+[node name="PowerSlot2" type="PanelContainer" parent="SafeArea/Layout/PowerBar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(132, 132)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"SlotPanel"
+
+[node name="View" type="Control" parent="SafeArea/Layout/PowerBar/PowerSlot2"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_piece")
+
+[node name="Level" type="Label" parent="SafeArea/Layout/PowerBar/PowerSlot2"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 26
+theme_override_constants/outline_size = 8
+horizontal_alignment = 2
+vertical_alignment = 2
+text = ""
+
+[node name="Spacer" type="Control" parent="SafeArea/Layout/PowerBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="ChargeBox" type="PanelContainer" parent="SafeArea/Layout/PowerBar"]
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"HudPanel"
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/PowerBar/ChargeBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Key" type="Label" parent="SafeArea/Layout/PowerBar/ChargeBox/V"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 22
+text = "CHARGE"
+horizontal_alignment = 1
+
+[node name="ChargeTrack" type="Panel" parent="SafeArea/Layout/PowerBar/ChargeBox/V"]
+clip_children = 1
+custom_minimum_size = Vector2(180, 18)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"BarTrack"
+
+[node name="ChargeFill" type="Panel" parent="SafeArea/Layout/PowerBar/ChargeBox/V/ChargeTrack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"BarFill"
+
 [node name="Tray" type="HBoxContainer" parent="SafeArea/Layout" unique_id=1496660764]
 layout_mode = 2
 mouse_filter = 2

@@ -46,7 +46,15 @@ const COMBO_HOT := Color(1, 0.83, 0.32)
 
 var _tray: Array = []          # TRAY_SIZE entries; {} means spent
 var _slots: Array[Control] = []
+## Where the piece being dragged came from. The old `_drag_index >= 0` sentinel
+## could not tell a tray card from a sidebar power.
+enum DragFrom { NONE, TRAY, POWER }
+var _drag_from := DragFrom.NONE
 var _drag_index := -1
+var _power_slots: Array[Control] = []
+## Powers are hidden in Puzzle: a seeded board plus a levelled bomb is no longer
+## the same puzzle for two players.
+var _powers_enabled := true
 var _drag_origin := Vector2i.ZERO
 ## Where the dragged piece is heading; `_process` eases it there each frame.
 var _drag_target := Vector2.ZERO
@@ -58,7 +66,6 @@ var _beat_best := false
 var _deal_tweens: Array = []
 ## Lines cleared this run; Puzzle mode scores its objective against it.
 var _puzzle_cleared := 0
-var _combo_power_given := false
 var _last_combo := 0
 var _aura_tween: Tween
 ## Which step of the background flow the run is on. -1 means the default
@@ -68,6 +75,9 @@ var _flow_step := -1
 
 func _ready() -> void:
 	_slots = [%Slot0, %Slot1, %Slot2, %Slot3, %Slot4]
+	_power_slots = [%PowerSlot0, %PowerSlot1, %PowerSlot2]
+	Progress.charge_changed.connect(func(_c: int, _m: int) -> void: _sync_powers())
+	Progress.loadout_changed.connect(_sync_powers)
 
 	_board.score_changed.connect(_on_score_changed)
 	_board.piece_placed.connect(_on_piece_placed)
@@ -97,7 +107,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if _drag_index >= 0:
+	if _drag_from != DragFrom.NONE:
 		# Frame-rate independent easing, so the pull feels the same at 30 or
 		# 120 fps rather than being tied to how often _process happens to run.
 		var t: float = 1.0 - exp(-DRAG_SNAP_SPEED * delta) if DRAG_SNAP_SPEED > 0.0 else 1.0
@@ -120,10 +130,6 @@ func _refill_tray() -> void:
 	var bias: float = Difficulty.small_piece_bias()
 	for i in TRAY_SIZE:
 		_tray.append(Blocks.random_piece(bias))
-	# One roll per hand, so a tray holds at most a single special. Which of the
-	# four turns up is an even draw.
-	if randf() < Difficulty.tray_special_chance():
-		_tray[randi() % TRAY_SIZE] = Blocks.random_special_piece()
 	_sync_tray()
 	_deal_animation()
 
@@ -171,46 +177,8 @@ func _pop_in(view: Control, delay: float) -> Tween:
 	return tween
 
 
-## True when the hand already holds any special, so the combo reward never
-## stacks a second one on top.
-func _tray_has_power() -> bool:
-	for piece: Dictionary in _tray:
-		if Blocks.is_power(piece):
-			return true
-	return false
 
 
-## Hands the player a special for stringing clears together -- any of the four,
-## drawn at random, so a streak is not always worth the same thing. Skipped when
-## the hand already holds one, keeping the "at most one special" rule intact.
-func _maybe_grant_combo_power() -> void:
-	var threshold: int = Difficulty.combo_power_threshold()
-	if threshold <= 0:
-		return                       # this band never grants one
-	if _combo_power_given or _board.combo < threshold:
-		return
-	_combo_power_given = true
-	if _tray_has_power():
-		return
-
-	# Prefer a slot the player has already emptied; only displace a live card
-	# if the hand happens to be full.
-	var empty_slots: Array = []
-	for i in TRAY_SIZE:
-		if _tray[i].is_empty():
-			empty_slots.append(i)
-	var slot: int = empty_slots.pick_random() if not empty_slots.is_empty() \
-		else randi() % TRAY_SIZE
-
-	var reward: Dictionary = Blocks.random_special_piece()
-	var power: Blocks.Power = Blocks.power_of(reward)
-	_tray[slot] = reward
-	_sync_tray()
-	_pop_in(_slots[slot].get_node("View"), 0.0)
-
-	var at: Vector2 = _slots[slot].get_global_rect().get_center() - Vector2(0.0, 150.0)
-	_overlay.popup(Blocks.power_name(power), at, Blocks.power_color(power), false)
-	Haptics.clear_lines(3)      # reward buzz, distinct from a plain clear
 
 
 ## A restart mid-deal would otherwise leave cards stuck part-way in.
@@ -219,6 +187,33 @@ func _kill_deal_tweens() -> void:
 		if tween is Tween and tween.is_valid():
 			tween.kill()
 	_deal_tweens.clear()
+
+
+## Mirrors `_sync_tray` for the power strip: each slot shows its equipped
+## power, dimmed when there is not enough charge to fire it.
+func _sync_powers() -> void:
+	if _power_slots.is_empty():
+		return
+	%PowerBar.visible = _powers_enabled
+	if not _powers_enabled:
+		return
+	for i in _power_slots.size():
+		var slot: Control = _power_slots[i]
+		var view: Control = slot.get_node("View")
+		var label: Label = slot.get_node("Level")
+		var power: int = Progress.equipped(i)
+		var held: bool = power != Blocks.Power.NONE
+		slot.visible = i < Progress.loadout_size()
+		# The dragged power is drawn under the pointer, so its slot reads empty.
+		var showing: bool = held and not (_drag_from == DragFrom.POWER and i == _drag_index)
+		view.piece = Blocks.power_piece(power) if showing else {}
+		view.dimmed = showing and not Progress.can_afford(power)
+		label.text = "L%d" % Progress.level_of(power) if showing else ""
+		label.add_theme_color_override("font_outline_color",
+			Themes.value("ink", Color.BLACK))
+	var maximum: int = maxi(1, Progress.max_charge())
+	%ChargeFill.scale.x = clampf(float(Progress.charge()) / float(maximum), 0.0, 1.0)
+	%Key.text = "%d/%d" % [Progress.charge(), maximum]
 
 
 func _sync_tray() -> void:
@@ -270,7 +265,7 @@ func _input(event: InputEvent) -> void:
 			_begin_drag(event.position)
 		else:
 			_end_drag(event.position)
-	elif event is InputEventMouseMotion and _drag_index >= 0:
+	elif event is InputEventMouseMotion and _drag_from != DragFrom.NONE:
 		_update_drag(event.position)
 
 
@@ -293,7 +288,7 @@ func _begin_drag(pointer: Vector2) -> void:
 
 
 func _update_drag(pointer: Vector2) -> void:
-	if _drag_index < 0:
+	if _drag_from == DragFrom.NONE:
 		return
 	var cell: float = _board.cell_size()
 	var piece_px: Vector2 = _drag_view.piece_pixel_size()
@@ -306,7 +301,8 @@ func _update_drag(pointer: Vector2) -> void:
 	_drag_origin = Vector2i(roundi(local.x / cell), roundi(local.y / cell))
 
 	var cells: Array = _drag_view.piece["cells"]
-	_board.preview_valid = _board.can_place(cells, _drag_origin)
+	_board.preview_valid = _board.can_target(cells, _drag_origin,
+		Blocks.power_of(_drag_view.piece))
 
 	# Over a legal spot the piece is pulled onto the exact cell it will occupy,
 	# so what you see is precisely what gets placed. Off the grid, or over an
@@ -324,39 +320,65 @@ func _update_drag(pointer: Vector2) -> void:
 
 
 func _end_drag(_pointer: Vector2) -> void:
-	if _drag_index < 0:
-		return
-	var index := _drag_index
-	var piece: Dictionary = _tray[index]
-	_drag_index = -1
+	match _drag_from:
+		DragFrom.TRAY: _drop_tray_piece()
+		DragFrom.POWER: _fire_power()
+	_drag_from = DragFrom.NONE
 	_drag_view.hide()
 	_board.preview_cells = []
 	_board.queue_redraw()
+	_check_game_over()
 
+
+func _drop_tray_piece() -> void:
+	var index := _drag_index
+	var piece: Dictionary = _tray[index]
 	# _begin_drag only ever picks a filled slot, but bail rather than index into
 	# an empty dictionary if that invariant is ever broken.
 	if piece.is_empty():
 		_sync_tray()
 		return
-
 	if not _board.can_place(piece["cells"], _drag_origin):
 		_sync_tray()          # illegal drop puts the card back in its slot
 		return
 
-	var power: Blocks.Power = Blocks.power_of(piece)
-	_board.place(piece["cells"], _drag_origin, piece["color"], power,
-		Progress.level_of(power))
+	_board.place(piece["cells"], _drag_origin, piece["color"])
 	_tray[index] = {}
-
 	if _tray_spent():
 		_refill_tray()
 	else:
 		_sync_tray()
 
-	_maybe_grant_combo_power()
 
-	if not _board.has_any_move(_remaining_pieces()):
-		_board.declare_game_over()
+## Fires the equipped power the player dragged out of the strip.
+##
+## Order matters twice here. The level is read BEFORE spending, because
+## spending records a use and can push the power to the next level -- a shot
+## must resolve at the level it was shown at. And charge is taken only after
+## `place()` reports it actually fired, so a drop the board refuses cannot
+## still bill the player.
+func _fire_power() -> void:
+	var power: int = Progress.equipped(_drag_index)
+	if power == Blocks.Power.NONE or not Progress.can_afford(power):
+		_sync_powers()
+		return
+	var piece: Dictionary = Blocks.power_piece(power)
+	var level: int = Progress.level_of(power)
+	if not _board.place(piece["cells"], _drag_origin, piece["color"], power, level):
+		_sync_powers()        # dropped off the board: a free cancel
+		return
+	Progress.spend(power)
+	_sync_powers()
+
+
+## A run is only over when neither the tray nor the strip can do anything. A
+## board with no legal card but a charged bomb in the bank is still playable.
+func _check_game_over() -> void:
+	if _board.has_any_move(_remaining_pieces()):
+		return
+	if _powers_enabled and Progress.has_affordable():
+		return
+	_board.declare_game_over()
 
 
 # --- board reactions ---------------------------------------------------------
@@ -366,8 +388,6 @@ func _on_score_changed(score: int, best: int, combo: int) -> void:
 	Difficulty.update(score)
 	%BestValue.text = "best  %d   ·   %s" % [best, Difficulty.level_name()]
 	_show_combo(combo)
-	if combo == 0:
-		_combo_power_given = false
 
 	# Overtaking the previous best is worth celebrating the moment it happens,
 	# not just on the game over screen. Skipped on a first-ever run, where
@@ -467,6 +487,8 @@ func _on_piece_placed(cells: Array, color_index: int) -> void:
 
 
 func _on_lines_cleared(rows: Array, cols: Array, _cell_count: int, points: int) -> void:
+	# A streak pays charge; a lone clear pays nothing.
+	Progress.award_combo(_board.combo)
 	_puzzle_cleared += rows.size() + cols.size()
 	_sync_objective()
 	if _puzzle_solved():
@@ -655,12 +677,14 @@ func _toggle_pause() -> void:
 
 
 func _cancel_drag() -> void:
+	_drag_from = DragFrom.NONE
 	_drag_index = -1
 	_drag_view.hide()
 	_board.preview_cells = []
 	_board.queue_redraw()
 	if not _tray.is_empty():
 		_sync_tray()
+	_sync_powers()
 
 
 func _restart() -> void:
@@ -689,7 +713,6 @@ func _restart() -> void:
 	_shake = 0.0
 	_best_at_start = Scores.best(Modes.current)
 	_beat_best = false
-	_combo_power_given = false
 	_last_combo = 0
 	%ScoreValue.reset_to(0)
 	Progress.touch_day()
@@ -697,6 +720,7 @@ func _restart() -> void:
 	_setup_mode()
 	_board.best = Scores.best(Modes.current)
 	_refill_tray()
+	_sync_powers()
 
 
 func _leave() -> void:
@@ -712,6 +736,9 @@ func _leave() -> void:
 func _setup_mode() -> void:
 	_puzzle_cleared = 0
 	%FuseBar.stop()
+	# Puzzle boards are seeded and shared, so a levelled power would make board
+	# N a different puzzle for two players.
+	_powers_enabled = Modes.current != Modes.Id.PUZZLE
 	# Before anything else: the grid changes the cell size, and every layout
 	# and legality check downstream depends on it.
 	_board.set_grid(Modes.grid_of())
@@ -732,6 +759,7 @@ func _setup_mode() -> void:
 		_:
 			%FuseBar.hide()
 			%Objective.hide()
+	_sync_powers()
 
 
 func _sync_objective() -> void:
