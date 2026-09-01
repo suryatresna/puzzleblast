@@ -74,6 +74,7 @@ func _ready() -> void:
 	Difficulty.tightened.connect(_on_difficulty_tightened)
 	_board.bomb_detonated.connect(_on_bomb_detonated)
 	_board.laser_fired.connect(_on_laser_fired)
+	_board.diagonal_fired.connect(_on_diagonal_fired)
 	_board.board_morphed.connect(_on_board_morphed)
 	_board.piece_fitted.connect(_on_piece_fitted)
 	_board.lines_cleared.connect(_on_lines_cleared)
@@ -532,6 +533,22 @@ func _on_laser_fired(at: Vector2i, cleared: int, points: int) -> void:
 	var extent: float = _board.size.x
 	_effects.laser_beam(at, extent, cell)
 	_overlay.combo_banner_text("LASER!", Color(1, 0.95, 0.55))
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	_shake = 20.0
+	Haptics.blast()
+	_sync_tray()
+
+
+## The diagonal power. Same treatment as the laser, struck along both diagonals
+## instead of the row and column.
+func _on_diagonal_fired(at: Vector2i, cleared: int, points: int) -> void:
+	Audio.play("laser", 0.85)
+	var cell: float = _board.cell_size()
+	var extent: float = _board.size.x
+	_effects.diagonal_beam(at, extent, cell)
+	_overlay.combo_banner_text("CROSSFIRE!", Blocks.power_color(Blocks.Power.DIAGONAL))
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)

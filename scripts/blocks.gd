@@ -18,10 +18,11 @@ const COLORS := [
 	Color("2dd4bf"), # morph
 	Color("fde047"), # laser
 	Color("a3e635"), # fit
+	Color("38bdf8"), # diagonal
 ]
 
 ## Special single-cell pieces. NONE is an ordinary shape.
-enum Power { NONE, BOMB, MORPH, LASER, FIT }
+enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL }
 
 ## Palette index and glyph for each power.
 const POWER_COLOR := {
@@ -29,6 +30,7 @@ const POWER_COLOR := {
 	Power.MORPH: 9,
 	Power.LASER: 10,
 	Power.FIT: 11,
+	Power.DIAGONAL: 12,
 }
 
 const BOMB_COLOR := 8
@@ -122,7 +124,8 @@ static func is_bomb(piece: Dictionary) -> bool:
 
 ## Every special. Both the dealt hand and the combo reward draw from this, with
 ## equal odds, so any of the four can turn up either way.
-const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT]
+const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT,
+	Power.DIAGONAL]
 
 ## Shown on the call-out when a streak earns a special.
 const POWER_NAMES := {
@@ -130,6 +133,7 @@ const POWER_NAMES := {
 	Power.MORPH: "COLLAPSE!",
 	Power.LASER: "LASER!",
 	Power.FIT: "FIT!",
+	Power.DIAGONAL: "CROSSFIRE!",
 }
 
 
@@ -237,6 +241,7 @@ static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
 		Power.MORPH: _draw_morph(ci, rect)
 		Power.LASER: _draw_laser(ci, rect)
 		Power.FIT: _draw_fit(ci, rect)
+		Power.DIAGONAL: _draw_diagonal(ci, rect)
 
 
 ## Three chevrons falling: the whole board drops and compacts.
@@ -297,3 +302,18 @@ static func draw_bomb(ci: CanvasItem, rect: Rect2) -> void:
 	ci.draw_line(fuse_a, fuse_b, Color(0.88, 0.78, 0.58), maxf(1.0, span * 0.05))
 	ci.draw_circle(fuse_b, span * 0.075, Color(1, 0.72, 0.25))
 	ci.draw_circle(fuse_b, span * 0.038, Color(1, 1, 0.88))
+
+
+## Two crossed strokes -- the diagonal counterpart to the laser's plus, drawn
+## in the same ink and inset by the same margin so the set reads as a family.
+static func _draw_diagonal(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var pad := span * 0.08
+	var thick := maxf(2.0, span * 0.08)
+	var ink := Color(0.20, 0.14, 0.02)
+	var tl := rect.position + Vector2(pad, pad)
+	var br := rect.end - Vector2(pad, pad)
+	ci.draw_line(tl, br, ink, thick)
+	ci.draw_line(Vector2(br.x, tl.y), Vector2(tl.x, br.y), ink, thick)
+	ci.draw_circle(rect.get_center(), span * 0.13, ink)
+	ci.draw_circle(rect.get_center(), span * 0.07, Color(1, 1, 0.92))

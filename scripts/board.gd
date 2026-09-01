@@ -12,6 +12,7 @@ signal lines_cleared(rows: Array, cols: Array, cell_count: int, points: int)
 signal piece_placed(cells: Array, color_index: int)
 signal bomb_detonated(at: Vector2i, from_row: int, to_row: int, cleared: int, points: int)
 signal laser_fired(at: Vector2i, cleared: int, points: int)
+signal diagonal_fired(at: Vector2i, cleared: int, points: int)
 signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
@@ -29,6 +30,10 @@ const POINTS_PER_CELL := 1
 const BOMB_POINTS_PER_CELL := 5
 ## Awarded per filled cell a laser burns through.
 const LASER_POINTS_PER_CELL := 4
+## Worth more per cell than the laser: the diagonals through a point are almost
+## always shorter than its row and column, so an equal rate would make this
+## strictly the weaker power.
+const DIAGONAL_POINTS_PER_CELL := 6
 ## Most cells a fit piece will grow to. Without a cap it would swallow the
 ## whole board on an open layout.
 const FIT_MAX_CELLS := 5
@@ -222,6 +227,7 @@ func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int) -> void:
 		Blocks.Power.LASER: _laser(at)
 		Blocks.Power.MORPH: _morph(at, color_index)
 		Blocks.Power.FIT: _fit(at, color_index)
+		Blocks.Power.DIAGONAL: _diagonal(at)
 
 
 ## Burns out the whole row and column the laser lands on.
@@ -243,6 +249,33 @@ func _laser(at: Vector2i) -> void:
 	score += points
 	best = maxi(best, score)
 	laser_fired.emit(at, cleared, points)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Clears both diagonals through the placed cell -- the one shape the laser
+## cannot make. Unlike a row and column, the two diagonals through a point vary
+## in length with where it sits, so a corner strike is weak and a centre strike
+## is strong. That is the trade the player is making.
+func _diagonal(at: Vector2i) -> void:
+	var doomed := {}
+	for i in range(-grid, grid):
+		for cell: Vector2i in [Vector2i(at.x + i, at.y + i),
+				Vector2i(at.x + i, at.y - i)]:
+			if cell.x >= 0 and cell.x < grid and cell.y >= 0 and cell.y < grid:
+				doomed[cell] = true
+
+	var cleared := 0
+	for cell: Vector2i in doomed:
+		if _grid[cell.y][cell.x] != EMPTY:
+			cleared += 1
+		_grid[cell.y][cell.x] = EMPTY
+		_pops.erase(cell)
+
+	var points := cleared * DIAGONAL_POINTS_PER_CELL
+	score += points
+	best = maxi(best, score)
+	diagonal_fired.emit(at, cleared, points)
 	score_changed.emit(score, best, combo)
 	queue_redraw()
 

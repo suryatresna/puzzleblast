@@ -178,6 +178,18 @@ def glyph(name):
                 d.rectangle([a + k, y + k, b - k, y + k + 1], fill=W)
                 break
             d.polygon([(a, y), (b, y), (mid, y + 5)], fill=W)
+    elif name == "diagonal":
+        # Two crossed strokes. Drawn as stepped blocks rather than with a line
+        # tool so the diagonal stays chunky instead of antialiasing itself.
+        span = b - a
+        for i in range(span + 1):
+            t = a + i
+            for ox in range(-1, 2):
+                for oy in range(-1, 2):
+                    if abs(ox) + abs(oy) > 1:
+                        continue
+                    d.point((t + ox, t + oy), fill=W)
+                    d.point((t + ox, (a + b) - t + oy), fill=W)
     elif name == "fit":
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):        # 4 arrows
             cx = mid + dx * 6
@@ -207,6 +219,6 @@ if __name__ == "__main__":
     save(plate_sprite(0.90), "panel")
     # dark panels: #3A2C22 -> #241C16 is a much steeper ~0.62
     save(plate_sprite(0.62, ink=(15, 12, 10, 255)), "panel_dark")
-    for g in ("bomb", "laser", "collapse", "fit"):
+    for g in ("bomb", "laser", "collapse", "fit", "diagonal"):
         save(glyph(g), "glyph_" + g)
     print("done -> ui/pixel/")

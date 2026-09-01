@@ -193,6 +193,26 @@ func laser_beam(at: Vector2i, extent: float, cell: float) -> void:
 	_shockwave((Vector2(at) + Vector2(0.5, 0.5)) * cell, extent * 0.9, 2.0)
 
 
+## The diagonal power's beam. The flash primitives here are axis-aligned rects,
+## so instead of rotating them this walks the two diagonals and flashes each
+## cell -- which also reads better, because the clear really is cell-by-cell
+## rather than a continuous band.
+func diagonal_beam(at: Vector2i, extent: float, cell: float) -> void:
+	var beam: Color = Themes.block_color(12)
+	var cells: int = int(round(extent / maxf(cell, 1.0)))
+	var centre := (Vector2(at) + Vector2(0.5, 0.5)) * cell
+	for i in range(-cells, cells + 1):
+		for step: Vector2i in [Vector2i(at.x + i, at.y + i),
+				Vector2i(at.x + i, at.y - i)]:
+			if step.x < 0 or step.x >= cells or step.y < 0 or step.y >= cells:
+				continue
+			var r := Rect2(Vector2(step) * cell, Vector2(cell, cell))
+			_core_flash(r, 1.4, beam, true, 1.1)
+			if absi(i) % 2 == 0:
+				_sparks(r, 1.4)
+	_shockwave(centre, extent * 0.9, 2.0)
+
+
 ## A downward sweep across the board as everything settles after a morph.
 func morph_sweep(extent: float, color: Color) -> void:
 	var band := Rect2(0.0, 0.0, extent, extent)

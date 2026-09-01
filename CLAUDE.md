@@ -103,7 +103,7 @@ The play screen splits cleanly in three. Respect this when adding features:
 - **`scenes/game.gd`** — orchestration. Turns board signals into HUD updates, effects, screen shake and tray management. Owns all input.
 - **`scripts/effects.gd`** — a `Node2D` that spawns particles, flashes, shockwaves and popups. Stateless with respect to the game.
 
-`board.gd` signals: `score_changed`, `lines_cleared`, `piece_placed`, `bomb_detonated`, `game_over`.
+`board.gd` signals: `score_changed`, `lines_cleared`, `piece_placed`, `bomb_detonated`, `laser_fired`, `diagonal_fired`, `board_morphed`, `piece_fitted`, `game_over`.
 
 ### Two effects layers
 
@@ -114,7 +114,9 @@ The play screen splits cleanly in three. Respect this when adding features:
 
 ### Pieces
 
-`scripts/blocks.gd` holds 18 base shapes in `BASE`, including three diagonals; rotations are **generated at load** and de-duplicated, producing 37 pieces. To add a shape, add one line to `BASE` — do not hand-write rotations. Pieces are plain `Dictionary` values: `{cells, color, size, weight}`, plus `bomb: true` for the bomb.
+`scripts/blocks.gd` holds 18 base shapes in `BASE`, including three diagonals; rotations are **generated at load** and de-duplicated, producing 37 pieces. To add a shape, add one line to `BASE` — do not hand-write rotations. Pieces are plain `Dictionary` values: `{cells, color, size, weight}`, plus `power` for a special.
+
+**Five powers**, in `Blocks.Power`: bomb, collapse (`MORPH`), laser, fit, and diagonal. `Blocks.COLORS` is a flat 13-entry table — eight shape colours then five power colours — and `Blocks.POWER_COLOR` maps each power to its index (8..12). Adding a sixth means an entry in every theme's `powers` array, a glyph in `Themes.GLYPHS`, a sprite from the generator, a branch in `Board._fire_power` **and** one in `Blocks.draw_power`. Both matches are written `Blocks.Power.X` in board.gd and `Power.X` in blocks.gd; miss one and the power is dealt but silently does nothing.
 
 The **bomb** is a 1×1 special that clears the half of the board it lands in (split on the horizontal midline). It arrives two ways: a 20% roll **per tray refill** (never per card — that could deal three at once), and as a reward for a 2× combo. Both paths respect one invariant: **at most one bomb in hand at a time**.
 

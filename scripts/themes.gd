@@ -54,7 +54,8 @@ const DEFS := {
 			Color("22d3ee"), Color("5b7cfa"), Color("ff9f45"), Color("ffd452"),
 			Color("4ade80"), Color("9b8cff"), Color("fb7185"), Color("f472b6"),
 		],
-		"powers": [Color("ef4444"), Color("2dd4bf"), Color("fde047"), Color("a3e635")],
+		"powers": [Color("ef4444"), Color("2dd4bf"), Color("fde047"), Color("a3e635"),
+			Color("38bdf8")],
 		"board_bg": Color(0.043, 0.039, 0.098, 0.93),
 		"socket": Color(1, 1, 1, 0.035),
 		"card": Color(0.11, 0.098, 0.243, 0.66),
@@ -94,7 +95,8 @@ const DEFS := {
 			Color("8ca271"), Color("b67f8e"), Color("6b8f9b"), Color("b07a48"),
 		],
 		# order matches Blocks.POWER_COLOR: bomb, collapse, laser, fit
-		"powers": [Color("cc6a41"), Color("6b8f9b"), Color("e4b963"), Color("8ca271")],
+		"powers": [Color("cc6a41"), Color("6b8f9b"), Color("e4b963"), Color("8ca271"),
+			Color("b6cbc3")],
 		"board_bg": Color("eadbbe"),
 		"board_border": Color("4a3b2a"),
 		"socket": Color("e4d4b4"),
@@ -135,7 +137,8 @@ const DEFS := {
 			Color("8fa9a1"), Color("a8842f"), Color("d0603a"), Color("e8bc61"),
 			Color("7c9166"), Color("a06e7c"), Color("5f7f8a"), Color("9c6b3f"),
 		],
-		"powers": [Color("d0603a"), Color("5f7f8a"), Color("e8bc61"), Color("7c9166")],
+		"powers": [Color("d0603a"), Color("5f7f8a"), Color("e8bc61"), Color("7c9166"),
+			Color("8fa9a1")],
 		# #241C16 is the PANEL token; the board itself is a step darker.
 		"board_bg": Color("201914"),
 		"board_border": Color("0f0c0a"),
@@ -164,6 +167,7 @@ const GLYPHS := {
 	2: "glyph_collapse",  # Power.MORPH
 	3: "glyph_laser",     # Power.LASER
 	4: "glyph_fit",       # Power.FIT
+	5: "glyph_diagonal",  # Power.DIAGONAL
 }
 
 var _id: int = ACTIVE
