@@ -1,4 +1,5 @@
 extends RefCounted
+class_name Blocks
 ## Shapes for the drag-and-drop block puzzle.
 ##
 ## Each base entry lists one piece's cells (origin normalised to 0,0), a spawn

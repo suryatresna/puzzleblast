@@ -1,4 +1,4 @@
-extends "res://scripts/menu_screen.gd"
+extends MenuScreen
 ## Shows the stored top runs, newest achievement highlighted, filtered by mode.
 ##
 ## Scores are kept per mode (see `Scores.MAX_ENTRIES`), so a filter always has

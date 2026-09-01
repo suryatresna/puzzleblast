@@ -3,7 +3,6 @@ extends Control
 ## their slot) and for the piece being dragged (which matches the board's cell
 ## size so what you see is exactly what will be placed).
 
-const Blocks := preload("res://scripts/blocks.gd")
 
 ## Empty dictionary means "nothing here" -- a spent tray slot.
 var piece: Dictionary = {}:

@@ -5,8 +5,6 @@ extends Control
 ## any row or column clears it with a boom. The tray refills once all five are
 ## spent, and the run ends when nothing left in the tray fits anywhere.
 
-const Blocks := preload("res://scripts/blocks.gd")
-const Haptics := preload("res://scripts/haptics.gd")
 
 const TRAY_SIZE := 5
 

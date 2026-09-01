@@ -19,7 +19,6 @@ extends Node
 signal solved_changed
 
 const SAVE_PATH := "user://settings.cfg"
-const Blocks := preload("res://scripts/blocks.gd")
 
 enum Id { PALETTE, SPRINT, PUZZLE, BIG_PALETTE }
 

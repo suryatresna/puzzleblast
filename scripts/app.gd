@@ -17,7 +17,6 @@ const SCENE_PROFILE := "res://scenes/profile.tscn"
 
 const FADE_DURATION := 0.22
 
-const Haptics := preload("res://scripts/haptics.gd")
 
 var game_name: String:
 	get: return ProjectSettings.get_setting("application/config/name", "Pixel Blast")

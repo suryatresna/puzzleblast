@@ -1,4 +1,4 @@
-extends "res://scripts/menu_screen.gd"
+extends MenuScreen
 ## Settings, laid out as the design's card rows.
 ##
 ## Two row shapes, both from the mockups:
@@ -9,7 +9,6 @@ extends "res://scripts/menu_screen.gd"
 ## `Themes.ACTIVE`), not a user setting.
 
 
-const Haptics := preload("res://scripts/haptics.gd")
 const ToggleSwitch := preload("res://scripts/toggle_switch.gd")
 const SegmentSlider := preload("res://scripts/segment_slider.gd")
 

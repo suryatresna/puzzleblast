@@ -1,4 +1,4 @@
-extends "res://scripts/menu_screen.gd"
+extends MenuScreen
 ## The player's progression: level, lifetime score, streak, and the power skill
 ## tree with each power's level.
 ##
@@ -13,7 +13,6 @@ extends "res://scripts/menu_screen.gd"
 ## One tap does the obvious thing for the card's state -- a locked power with an
 ## unlock banked gets unlocked, an owned one toggles in and out of the loadout.
 
-const Blocks := preload("res://scripts/blocks.gd")
 const PieceView := preload("res://scripts/piece_view.gd")
 
 const NAME_FONT := 32

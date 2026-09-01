@@ -1,4 +1,4 @@
-extends "res://scripts/menu_screen.gd"
+extends MenuScreen
 ## About page. The identity strings come from project settings via App so this
 ## screen and the menu footer can never drift apart.
 

@@ -1,4 +1,4 @@
-extends "res://scripts/menu_screen.gd"
+extends MenuScreen
 ## The mode picker, laid out as the design's cards.
 ##
 ## Cards are built from `Modes.DEFS` rather than placed in the scene, so adding

@@ -5,7 +5,6 @@ extends Control
 ## test that ends the run. Presentation beyond drawing the grid itself lives in
 ## game.gd, which listens to the signals below.
 
-const Blocks := preload("res://scripts/blocks.gd")
 
 signal score_changed(score: int, best: int, combo: int)
 signal lines_cleared(rows: Array, cols: Array, cell_count: int, points: int)

@@ -1,4 +1,5 @@
 extends RefCounted
+class_name Haptics
 ## Handheld vibration, tiered by how significant the moment is.
 ##
 ## This owns its own on/off preference and loads it on first use. It used to
