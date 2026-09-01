@@ -333,6 +333,39 @@ func combo_atmosphere(tint: Color, flowers: bool, combo: int, area: Vector2) -> 
 	burst.finished.connect(burst.queue_free)
 
 
+## A level-up. Colour columns rising the full height of the screen -- the same
+## drift as `combo_atmosphere`, but one emitter per palette colour instead of a
+## single tint, which is what makes it read as a celebration rather than as a
+## bigger combo.
+##
+## Replaces the confetti this used to throw: confetti fell from the top, which
+## fought the aura washing up from the bottom.
+func level_aura(area: Vector2) -> void:
+	var palette: Array = Themes.value("blocks", [])
+	if palette.is_empty():
+		palette = [Color.WHITE]
+	var columns: int = mini(6, palette.size())
+	for i in columns:
+		var burst: CPUParticles2D = ComboBurst.instantiate()
+		add_child(burst)
+		# Spread the columns evenly, each covering its own slice of the width so
+		# the rise reads as a curtain rather than a single plume.
+		var slice: float = area.x / float(columns)
+		burst.position = Vector2(slice * (i + 0.5), area.y + 40.0)
+		burst.emission_rect_extents = Vector2(slice * 0.6, 30.0)
+		burst.amount = 44
+		burst.lifetime = 2.6
+		burst.initial_velocity_min = area.y * 0.30
+		burst.initial_velocity_max = area.y * 0.80
+		burst.gravity = Vector2(0, -area.y * 0.06)
+		burst.color = (palette[i % palette.size()] as Color).lightened(0.15)
+		burst.scale_amount_min = 8.0
+		burst.scale_amount_max = 22.0
+		burst.one_shot = true
+		burst.emitting = true
+		burst.finished.connect(burst.queue_free)
+
+
 static func combo_word(combo: int) -> String:
 	return COMBO_WORDS[clampi(combo - 1, 0, COMBO_WORDS.size() - 1)]
 

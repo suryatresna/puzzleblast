@@ -97,6 +97,9 @@ var _themes: Array[int] = []
 var _last_played := ""
 var _streak := 0
 var _days_played := 0
+## The highest level the player has actually been shown. The profile compares
+## it against `level` to decide whether its XP bar should celebrate.
+var _seen_level := 1
 
 
 func _ready() -> void:
@@ -129,6 +132,27 @@ func total_score() -> int:
 func level() -> int:
 	_ensure_loaded()
 	return _level
+
+
+## True when the player has levelled since the profile last showed them. Drives
+## the XP bar's level-up animation.
+func has_unseen_level() -> bool:
+	_ensure_loaded()
+	return _level > _seen_level
+
+
+## The level the celebration should count up FROM.
+func seen_level() -> int:
+	_ensure_loaded()
+	return _seen_level
+
+
+func mark_level_seen() -> void:
+	_ensure_loaded()
+	if _seen_level == _level:
+		return
+	_seen_level = _level
+	_save()
 
 
 ## Whether the player has anything to carry over. Drives the menu's
@@ -429,6 +453,7 @@ func _ensure_loaded() -> void:
 	_last_played = String(cfg.get_value("progress", "last_played", ""))
 	_streak = maxi(0, int(cfg.get_value("progress", "streak", 0)))
 	_days_played = maxi(0, int(cfg.get_value("progress", "days_played", 0)))
+	_seen_level = maxi(1, int(cfg.get_value("progress", "seen_level", 1)))
 	# The level is derived, never trusted from disk -- a hand-edited file
 	# cannot grant levels the score does not support.
 	_level = level_for_score(_total_score)
@@ -471,6 +496,7 @@ func _save() -> void:
 	cfg.set_value("progress", "last_played", _last_played)
 	cfg.set_value("progress", "streak", _streak)
 	cfg.set_value("progress", "days_played", _days_played)
+	cfg.set_value("progress", "seen_level", _seen_level)
 	cfg.save(SAVE_PATH)
 
 
@@ -488,6 +514,7 @@ func wipe() -> void:
 	_last_played = ""
 	_streak = 0
 	_days_played = 0
+	_seen_level = 1
 	_save()
 	level_changed.emit(_level, 0)
 	charge_changed.emit(0, max_charge())

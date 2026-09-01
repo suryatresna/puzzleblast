@@ -15,6 +15,8 @@ const NAME_FONT := 32
 const BLURB_FONT := 26
 const ICON := 96
 
+var _xp_tween: Tween
+
 
 func _ready() -> void:
 	super()
@@ -30,7 +32,7 @@ func _rebuild() -> void:
 	%LevelLabel.text = "LEVEL %d" % level
 	var to_next := Progress.threshold(level + 1)
 	%XpLabel.text = "%s / %s" % [Progress.commas(Progress.total_score()), Progress.commas(to_next)]
-	%XpFill.scale.x = Progress.level_progress()
+	_animate_xp()
 	%Stats.text = "%s lifetime  ·  %d day streak  ·  %d days played" % [
 		Progress.commas(Progress.total_score()), Progress.streak(), Progress.days_played(),
 	]
@@ -51,6 +53,44 @@ func _rebuild() -> void:
 		child.queue_free()
 	for power: int in Blocks.ALL_POWERS:
 		_card(power, pending)
+
+
+## The XP bar. Normally it just eases to its value; if the player has levelled
+## since they last looked, it fills to the top, snaps back to empty and eases
+## into the new level -- so the roll-over is the thing they see, not a bar that
+## was already where it ended up.
+func _animate_xp() -> void:
+	if _xp_tween and _xp_tween.is_valid():
+		_xp_tween.kill()
+	var target := Progress.level_progress()
+	var levelled := Progress.has_unseen_level()
+	%XpFill.scale.x = 0.0
+	_xp_tween = create_tween()
+	if levelled:
+		var gained: int = Progress.level() - Progress.seen_level()
+		# One fill-and-reset per level crossed, capped so a huge jump does not
+		# hold the screen for ten seconds.
+		for i in mini(gained, 3):
+			_xp_tween.tween_property(%XpFill, "scale:x", 1.0, 0.45) \
+				.set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+			_xp_tween.tween_property(%XpFill, "scale:x", 0.0, 0.10)
+		_xp_tween.tween_callback(_flash_level)
+	_xp_tween.tween_property(%XpFill, "scale:x", target, 0.55) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	if levelled:
+		Progress.mark_level_seen()
+
+
+## A short punch on the level number as the bar rolls over.
+func _flash_level() -> void:
+	var label: Label = %LevelLabel
+	label.pivot_offset = label.size * 0.5
+	label.scale = Vector2.ONE * 1.35
+	label.add_theme_color_override("font_color", Themes.text_color("highlight"))
+	var punch := create_tween()
+	punch.tween_property(label, "scale", Vector2.ONE, 0.45) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	punch.tween_callback(func() -> void: label.remove_theme_color_override("font_color"))
 
 
 func _equipped_count() -> int:

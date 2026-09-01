@@ -650,8 +650,10 @@ func _on_game_over() -> void:
 	# source of truth either way.
 	GameServices.submit_score(_board.score, Modes.current)
 	_board.best = Scores.best(Modes.current)
-	if rank == 1 or levels_gained > 0:
+	if rank == 1:
 		_overlay.celebrate(get_viewport_rect().size)
+	elif levels_gained > 0:
+		_overlay.level_aura(get_viewport_rect().size)
 	_show_level_up(levels_gained)
 	%FinalScore.text = str(_board.score)
 	%FinalBest.text = "%d lines cleared" % _board.lines
@@ -704,7 +706,7 @@ func _celebrate_level() -> void:
 
 	var screen: Vector2 = get_viewport_rect().size
 	_overlay.combo_banner_text("LEVEL %d" % Progress.level(), tint)
-	_overlay.celebrate(screen)
+	_overlay.level_aura(screen)
 	Haptics.celebrate(get_tree())
 
 
