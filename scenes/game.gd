@@ -89,9 +89,9 @@ var _level_aura := false
 ## together. Restoring the board without the tray would take the placed piece
 ## off the board AND leave the slot spent.
 var _history: Array = []
-## Kept so a second rewind restarts the clock. Without it the first one's
-## restore would fire mid-way through the second and cut the glow short.
-var _rewind_glow: Tween
+## Kept so one cast restarts the clock on the last. Without it the first one's
+## pending restore fires mid-way through the second and cuts its sky short.
+var _power_glow: Tween
 var _xp_tween: Tween
 ## While the bar is playing its roll-over, ordinary score updates must not
 ## retarget it -- they would cut the celebration off mid-fill.
@@ -519,11 +519,48 @@ const SHUFFLE_MAX_SPAN := 3
 
 ## Actions a rewind steps back over, by level.
 const REWIND_STEPS_BY_LEVEL := [1, 2, 3, 4, 5]
-## The backdrop while a rewind is settling: the Time Stone's emerald.
-const REWIND_GLOW := Color(0.13, 0.85, 0.42)
-## How long the board stays lit. Long enough to read as a held state rather
-## than another one-frame bang.
-const REWIND_GLOW_SECONDS := 3.0
+## Backdrop and light for every power: the sky it washes the screen to, the
+## colour of the motes gathering round the board, and how long it holds.
+##
+## A cast is a moment the player sits in, not a one-frame bang -- but only just.
+## Nothing here runs past 1.6s: the backdrop is what the board is read against,
+## and holding a colour over it any longer stops being an accent and starts
+## being the game's palette. Reach roughly tracks how big the power is.
+const POWER_ATMOSPHERE := {
+	Blocks.Power.FIT:
+		{"sky": Color(0.28, 0.50, 0.08), "motes": Color(0.72, 0.95, 0.35), "hold": 0.9},
+	Blocks.Power.SHUFFLE:
+		{"sky": Color(0.05, 0.42, 0.38), "motes": Color(0.45, 0.95, 0.88), "hold": 0.9},
+	Blocks.Power.MORPH:
+		{"sky": Color(0.05, 0.35, 0.34), "motes": Color(0.35, 0.90, 0.85), "hold": 1.0},
+	Blocks.Power.LASER:
+		{"sky": Color(0.62, 0.52, 0.05), "motes": Color(1.00, 0.95, 0.50), "hold": 1.0},
+	Blocks.Power.DIAGONAL:
+		{"sky": Color(0.07, 0.35, 0.60), "motes": Color(0.40, 0.80, 1.00), "hold": 1.0},
+	Blocks.Power.BOMB:
+		{"sky": Color(0.55, 0.16, 0.05), "motes": Color(1.00, 0.60, 0.25), "hold": 1.2},
+	# A storm sky, not paper white. The HUD is drawn in cream, and the top
+	# gradient stop lerps 85% of the way to this colour -- at 0.68 the score
+	# and the "best" line measured within six values of the sky behind them and
+	# simply disappeared. Against the near-black default this still reads as a
+	# white cloud rolling in.
+	Blocks.Power.THUNDER:
+		{"sky": Color(0.46, 0.49, 0.54), "motes": Color(1.00, 0.92, 0.35), "hold": 1.2},
+	Blocks.Power.TELEPORT:
+		{"sky": Color(0.45, 0.08, 0.50), "motes": Color(0.95, 0.50, 1.00), "hold": 1.2},
+	Blocks.Power.EARTHQUAKE:
+		{"sky": Color(0.35, 0.25, 0.10), "motes": Color(0.85, 0.72, 0.45), "hold": 1.4},
+	Blocks.Power.METEOR:
+		{"sky": Color(0.42, 0.14, 0.03), "motes": Color(1.00, 0.62, 0.30), "hold": 1.4},
+	Blocks.Power.TSUNAMI:
+		{"sky": Color(0.02, 0.22, 0.42), "motes": Color(0.50, 0.85, 1.00), "hold": 1.5},
+	# Night, with the disc's own violet falling into it.
+	Blocks.Power.BLACKHOLE:
+		{"sky": Color(0.02, 0.01, 0.05), "motes": Color(0.72, 0.55, 1.00), "hold": 1.6},
+	# The Time Stone.
+	Blocks.Power.REWIND:
+		{"sky": Color(0.13, 0.85, 0.42), "motes": Color(0.45, 0.95, 0.60), "hold": 1.6},
+}
 ## One deeper than the longest rewind, so the top level always has its full
 ## reach available rather than being clipped by the buffer.
 const HISTORY_MAX := 6
@@ -583,11 +620,35 @@ func _rewind(level: int) -> bool:
 	return true
 
 
+## Washes the sky to the power's own colour and gathers light around the board
+## for as long as POWER_ATMOSPHERE says, then hands the backdrop back to
+## wherever the combo flow had it -- which is also what drops a level-up wash,
+## since the cast's own colour supersedes it.
+func _power_atmosphere(power: int) -> void:
+	var spec: Dictionary = POWER_ATMOSPHERE.get(power, {})
+	if spec.is_empty():
+		return
+	var hold: float = float(spec["hold"])
+	_background.tint_to(spec["sky"], 1.0, 0.25)
+
+	# Hugs the drawn grid, not the control: under a pixel theme the snapped
+	# grid is narrower than `size` and a halo on the control would float away
+	# from the board's edge.
+	var cell: float = _board.cell_size()
+	var span: float = cell * _board.grid
+	var at: Vector2 = _board.global_position + _board.grid_origin(cell)
+	_atmosphere.time_field(Rect2(at, Vector2(span, span)), spec["motes"], hold)
+
+	if _power_glow and _power_glow.is_valid():
+		_power_glow.kill()
+	_power_glow = create_tween()
+	_power_glow.tween_interval(hold)
+	_power_glow.tween_callback(_restore_flow)
+
+
 ## A sweep back across the board rather than puffs on the restored cells: the
 ## point of a rewind is that the whole board moved, not that particular tiles
-## arrived. The screen then holds an emerald wash with light gathering around
-## the board for REWIND_GLOW_SECONDS, so time being wound back reads as a state
-## the player is in rather than as another one-frame bang.
+## arrived.
 func _on_rewound(steps: int) -> void:
 	Audio.play("collapse", 1.25)
 	var tint: Color = Blocks.power_color(Blocks.Power.REWIND)
@@ -599,24 +660,7 @@ func _on_rewound(steps: int) -> void:
 	_overlay.combo_banner_text(
 		"REWIND!" if steps == 1 else "REWIND x%d" % steps, tint)
 
-	_background.tint_to(REWIND_GLOW, 1.0, 0.30)
-	# Hugs the drawn grid, not the control: under a pixel theme the snapped
-	# grid is narrower than `size` and a halo on the control would float away
-	# from the board's edge.
-	var cell: float = _board.cell_size()
-	var span: float = cell * _board.grid
-	var at: Vector2 = _board.global_position + _board.grid_origin(cell)
-	_atmosphere.time_field(Rect2(at, Vector2(span, span)),
-		REWIND_GLOW.lightened(0.25), REWIND_GLOW_SECONDS)
-
-	if _rewind_glow and _rewind_glow.is_valid():
-		_rewind_glow.kill()
-	_rewind_glow = create_tween()
-	_rewind_glow.tween_interval(REWIND_GLOW_SECONDS)
-	# Back to whatever the combo flow had, which is also what drops a level-up
-	# wash -- a rewind's own colour supersedes it.
-	_rewind_glow.tween_callback(_restore_flow)
-
+	_power_atmosphere(Blocks.Power.REWIND)
 	_shake = 5.0
 	Haptics.clear_lines(2)
 	_sync_powers()
@@ -705,6 +749,7 @@ func _on_tray_shuffled() -> void:
 	Audio.play("place", 1.1)
 	var tint: Color = Blocks.power_color(Blocks.Power.SHUFFLE)
 	_overlay.combo_banner_text("SHUFFLE!", tint)
+	_power_atmosphere(Blocks.Power.SHUFFLE)
 	Haptics.clear_lines(1)
 
 
@@ -717,6 +762,7 @@ func _on_earthquake_shook(moved: Array, nudges: int) -> void:
 	for c: Vector2i in _sample_cells(moved, MAX_FILL_PUFFS):
 		_effects.place_puff([c], cell, tint)
 	_overlay.combo_banner_text("EARTHQUAKE!", tint)
+	_power_atmosphere(Blocks.Power.EARTHQUAKE)
 	# Scaled by how long the ground kept moving, and the strongest shake in the
 	# game: this is the one power whose whole idea is the shaking.
 	_shake = 14.0 + mini(nudges, 32) * 0.9
@@ -909,6 +955,7 @@ func _on_bomb_detonated(at: Vector2i, from_row: int, to_row: int,
 	var fire := Color(1, 0.55, 0.2)
 
 	_effects.explode_bomb(centre, region, cell)
+	_power_atmosphere(Blocks.Power.BOMB)
 	_effects.popup("BOOM!", region.get_center(), fire, true)
 	if points > 0:
 		_effects.popup("+%d" % points, region.get_center() + Vector2(0.0, cell * 1.5),
@@ -926,6 +973,7 @@ func _on_laser_fired(at: Vector2i, cleared: int, points: int, _level := 1) -> vo
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
 	_effects.laser_beam(at, extent, cell)
+	_power_atmosphere(Blocks.Power.LASER)
 	_overlay.combo_banner_text("LASER!", Color(1, 0.95, 0.55))
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
@@ -942,6 +990,7 @@ func _on_diagonal_fired(at: Vector2i, cleared: int, points: int, _level := 1) ->
 	var cell: float = _board.cell_size()
 	var extent: float = _board.size.x
 	_effects.diagonal_beam(at, extent, cell)
+	_power_atmosphere(Blocks.Power.DIAGONAL)
 	_overlay.combo_banner_text("CROSSFIRE!", Blocks.power_color(Blocks.Power.DIAGONAL))
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
@@ -960,6 +1009,7 @@ func _on_blackhole_fired(at: Vector2i, radius: float, cleared: int, points: int)
 	var tint: Color = Blocks.power_color(Blocks.Power.BLACKHOLE)
 	var reach: float = (radius + 0.5) * cell
 	_effects.implode(centre, reach, cell, tint)
+	_power_atmosphere(Blocks.Power.BLACKHOLE)
 	_overlay.combo_banner_text("BLACKHOLE!", tint)
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
@@ -980,6 +1030,7 @@ func _on_thunder_struck(cells: Array, cleared: int, points: int) -> void:
 	for c: Vector2i in cells:
 		_effects.place_puff([c], cell, tint)
 	_overlay.combo_banner_text("THUNDER!", tint)
+	_power_atmosphere(Blocks.Power.THUNDER)
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
@@ -998,6 +1049,7 @@ func _on_blocks_teleported(from_cells: Array, to_cells: Array, color_index: int)
 	_effects.place_puff(from_cells, cell, tint)
 	_effects.place_puff(to_cells, cell, Blocks.COLORS[color_index])
 	_overlay.combo_banner_text("TELEPORT!", tint)
+	_power_atmosphere(Blocks.Power.TELEPORT)
 	_shake = 6.0
 	Haptics.clear_lines(2)
 	_sync_tray()
@@ -1031,6 +1083,7 @@ func _on_meteor_landed(cells: Array, color_index: int, points: int) -> void:
 	for c: Vector2i in _sample_cells(cells, MAX_FILL_PUFFS):
 		_effects.place_puff([c], cell, tint)
 	_overlay.combo_banner_text("METEOR!", tint)
+	_power_atmosphere(Blocks.Power.METEOR)
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
@@ -1050,6 +1103,7 @@ func _on_tsunami_swept(cells: Array, color_index: int, points: int) -> void:
 	for c: Vector2i in _sample_cells(cells, MAX_FILL_PUFFS):
 		_effects.place_puff([c], cell, tint)
 	_overlay.combo_banner_text("TSUNAMI!", tint)
+	_power_atmosphere(Blocks.Power.TSUNAMI)
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
@@ -1062,6 +1116,7 @@ func _on_board_morphed(dropped: int) -> void:
 	Audio.play("collapse")
 	_effects.morph_sweep(_board.size.x, Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
 	_overlay.combo_banner_text("COLLAPSE!", Blocks.COLORS[Blocks.POWER_COLOR[Blocks.Power.MORPH]])
+	_power_atmosphere(Blocks.Power.MORPH)
 	_shake = 6.0 + mini(dropped, 20) * 0.8
 	Haptics.clear_lines(3)
 	_sync_tray()
@@ -1071,6 +1126,7 @@ func _on_piece_fitted(cells: Array, color_index: int) -> void:
 	Audio.play("fit")
 	_effects.place_puff(cells, _board.cell_size(), Blocks.COLORS[color_index])
 	_overlay.combo_banner_text("FIT!", Blocks.COLORS[color_index])
+	_power_atmosphere(Blocks.Power.FIT)
 	_shake = 5.0
 	Haptics.clear_lines(1)
 	_sync_tray()

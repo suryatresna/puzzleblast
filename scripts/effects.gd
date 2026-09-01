@@ -425,8 +425,8 @@ func combo_atmosphere(tint: Color, flowers: bool, combo: int, area: Vector2) -> 
 
 ## A held halo around `rect`: slow motes drifting outward from each edge for
 ## `seconds`, then allowed to finish. Unlike every other effect here this one
-## does not burst and end -- rewind is a state that lasts, so the light has to
-## keep feeding rather than fire once.
+## does not burst and end -- a power cast is a moment that lasts, so the light
+## keeps feeding rather than firing once.
 ##
 ## Emitted OUTWARD on purpose. This node sits behind the board, so anything
 ## aimed inward is hidden under the board's own panel.
@@ -443,6 +443,9 @@ func time_field(rect: Rect2, tint: Color, seconds: float) -> void:
 		{"at": Vector2(rect.end.x, mid.y),
 			"ext": Vector2(band, rect.size.y * 0.5), "dir": Vector2.RIGHT},
 	]
+	# A short cast gets a short tail: the motes must not still be fading well
+	# after the backdrop has gone back to normal.
+	var life: float = clampf(seconds * 0.55, 0.35, 1.0)
 	for e: Dictionary in edges:
 		var motes: CPUParticles2D = ComboBurst.instantiate()
 		add_child(motes)
@@ -452,7 +455,7 @@ func time_field(rect: Rect2, tint: Color, seconds: float) -> void:
 		motes.one_shot = false
 		motes.explosiveness = 0.0
 		motes.amount = 44
-		motes.lifetime = 1.4
+		motes.lifetime = life
 		motes.direction = e["dir"]
 		motes.spread = 24.0
 		motes.gravity = Vector2.ZERO
