@@ -13,6 +13,9 @@ signal piece_placed(cells: Array, color_index: int)
 signal bomb_detonated(at: Vector2i, from_row: int, to_row: int, cleared: int, points: int)
 signal laser_fired(at: Vector2i, cleared: int, points: int, level: int)
 signal diagonal_fired(at: Vector2i, cleared: int, points: int, level: int)
+signal blackhole_fired(at: Vector2i, radius: float, cleared: int, points: int)
+signal thunder_struck(cells: Array, cleared: int, points: int)
+signal blocks_teleported(from_cells: Array, to_cells: Array, color_index: int)
 signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
@@ -81,6 +84,35 @@ const MORPH_COLUMNS := [1, 3, 5, 0, 0]
 ## Level 5 runs the drop twice, so a collapse that opens a line cashes it.
 const MORPH_CHAIN_LEVEL := 5
 const FIT_CELLS_BY_LEVEL := [3, 5, 7, 9, 12]
+
+## Blackhole. A EUCLIDEAN radius, which is what separates it from the bomb --
+## the bomb takes a square, this takes a disc. Levels are supersets for free
+## here: a larger radius can only ever contain the smaller one. On an 8x8 the
+## ramp covers 5, 9, 21, 37 and 49 cells.
+const BLACKHOLE_RADIUS_BY_LEVEL := [1.2, 1.8, 2.5, 3.2, 4.0]
+
+## Thunder picks OCCUPIED cells at random, so it is the one power whose reach
+## cannot be a superset cell-for-cell. The ramp is monotonic in expectation
+## instead: more strikes, and at the top each one takes its neighbours too.
+const THUNDER_BY_LEVEL := [
+	{"strikes": 1, "splash": false},
+	{"strikes": 2, "splash": false},
+	{"strikes": 3, "splash": false},
+	{"strikes": 5, "splash": false},
+	{"strikes": 8, "splash": true},
+]
+
+## Teleport lifts the span x span block at the target and sets it down
+## somewhere it fits. `tries` is how many destinations are sampled; `smart`
+## picks the sampled destination that completes the most lines rather than the
+## first one that fits, which is what turns it from a shuffle into a tool.
+const TELEPORT_BY_LEVEL := [
+	{"span": 1, "tries": 8, "smart": false},
+	{"span": 2, "tries": 12, "smart": false},
+	{"span": 2, "tries": 20, "smart": true},
+	{"span": 3, "tries": 30, "smart": true},
+	{"span": 3, "tries": 60, "smart": true},
+]
 
 
 ## Clamps a level to the table range.
@@ -238,13 +270,22 @@ func grid_origin(cell: float) -> Vector2:
 ## one by hand.
 const PLACING_POWERS := [Blocks.Power.MORPH, Blocks.Power.FIT]
 
+## Powers that operate ON a block rather than on a square of board. Teleport
+## has nothing to pick up over an empty cell, so aiming it at one is a misfire
+## the player should not be billed for.
+const OCCUPIED_POWERS := [Blocks.Power.TELEPORT]
+
 
 ## Whether a power may be fired at this spot. Ordinary placement (power NONE)
 ## is unchanged -- it still goes through can_place().
 func can_target(cells: Array, origin: Vector2i, power := Blocks.Power.NONE) -> bool:
 	if power == Blocks.Power.NONE or PLACING_POWERS.has(power):
 		return can_place(cells, origin)
-	return _in_bounds(cells, origin)
+	if not _in_bounds(cells, origin):
+		return false
+	if OCCUPIED_POWERS.has(power):
+		return _grid[origin.y][origin.x] != EMPTY
+	return true
 
 
 ## Bounds only, without the occupancy test.
@@ -274,8 +315,7 @@ func place(cells: Array, origin: Vector2i, color_index: int,
 		return false
 
 	if power != Blocks.Power.NONE:
-		_fire_power(power, origin, color_index, level)
-		return true
+		return _fire_power(power, origin, color_index, level)
 
 	var placed: Array = []
 	for c: Vector2i in cells:
@@ -295,14 +335,21 @@ func place(cells: Array, origin: Vector2i, color_index: int,
 	return true
 
 
+## Returns false when the power could not do anything -- `game.gd` treats that
+## as a misfire and hands the charge back. Only teleport can fail: everything
+## else either destroys something or legitimately hits an empty board.
 func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int,
-		level := 1) -> void:
+		level := 1) -> bool:
 	match power:
 		Blocks.Power.BOMB: _detonate(at, level)
 		Blocks.Power.LASER: _laser(at, level)
 		Blocks.Power.MORPH: _morph(at, color_index, level)
 		Blocks.Power.FIT: _fit(at, color_index, level)
 		Blocks.Power.DIAGONAL: _diagonal(at, level)
+		Blocks.Power.BLACKHOLE: _blackhole(at, level)
+		Blocks.Power.THUNDER: _thunder(at, level)
+		Blocks.Power.TELEPORT: return _teleport(at, level)
+	return true
 
 
 ## Burns out the whole row and column the laser lands on.
@@ -493,6 +540,166 @@ func _detonate(at: Vector2i, level := 1) -> void:
 	bomb_detonated.emit(at, from_row, to_row, cleared, points)
 	score_changed.emit(score, best, combo)
 	queue_redraw()
+
+
+## Collapses a disc of the board into the target. Unlike the bomb, which takes
+## a square, the reach is a true radius -- corners survive a blackhole that
+## would have died to a bomb of the same nominal size.
+func _blackhole(at: Vector2i, level := 1) -> void:
+	var radius: float = float(BLACKHOLE_RADIUS_BY_LEVEL[_lvl(level)])
+	var span := int(ceilf(radius))
+	var cleared := 0
+	for y in range(at.y - span, at.y + span + 1):
+		for x in range(at.x - span, at.x + span + 1):
+			if x < 0 or x >= grid or y < 0 or y >= grid:
+				continue
+			if Vector2(x - at.x, y - at.y).length() > radius:
+				continue
+			if _grid[y][x] != EMPTY:
+				cleared += 1
+				_grid[y][x] = EMPTY
+				_pops.erase(Vector2i(x, y))
+
+	var points := cleared * BOMB_POINTS_PER_CELL
+	score += points
+	best = maxi(best, score)
+	blackhole_fired.emit(at, radius, cleared, points)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Strikes occupied cells at random, wherever they are. The drop point does not
+## aim it -- it is weather, not artillery -- which is why it is the cheapest
+## power that removes blocks and the only one that is useful on a full board
+## the player cannot otherwise reach into.
+func _thunder(_at: Vector2i, level := 1) -> void:
+	var spec: Dictionary = THUNDER_BY_LEVEL[_lvl(level)]
+	var occupied: Array[Vector2i] = []
+	for y in grid:
+		for x in grid:
+			if _grid[y][x] != EMPTY:
+				occupied.append(Vector2i(x, y))
+	occupied.shuffle()
+
+	var struck: Array = []
+	var doomed := {}
+	for i in mini(int(spec["strikes"]), occupied.size()):
+		var cell: Vector2i = occupied[i]
+		struck.append(cell)
+		doomed[cell] = true
+		if bool(spec["splash"]):
+			for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+				var n: Vector2i = cell + step
+				if n.x >= 0 and n.x < grid and n.y >= 0 and n.y < grid:
+					doomed[n] = true
+
+	var cleared := 0
+	for cell: Vector2i in doomed:
+		if _grid[cell.y][cell.x] != EMPTY:
+			cleared += 1
+			_grid[cell.y][cell.x] = EMPTY
+			_pops.erase(cell)
+
+	var points := cleared * BOMB_POINTS_PER_CELL
+	score += points
+	best = maxi(best, score)
+	thunder_struck.emit(struck, cleared, points)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+
+
+## Lifts the square of blocks at the target and sets it down somewhere it fits.
+## The blocks are not destroyed -- this is the one power that rearranges rather
+## than removes, which is what makes it the answer to a board that is not full
+## but is badly shaped.
+func _teleport(at: Vector2i, level := 1) -> bool:
+	var spec: Dictionary = TELEPORT_BY_LEVEL[_lvl(level)]
+	var span: int = int(spec["span"])
+
+	# Lift: the occupied cells of the span x span square, as offsets from `at`,
+	# keeping each one's colour so the block arrives looking like itself.
+	var lifted: Array[Vector2i] = []
+	var colors: Array[int] = []
+	for dy in span:
+		for dx in span:
+			var c := Vector2i(at.x + dx, at.y + dy)
+			if c.x >= grid or c.y >= grid:
+				continue
+			if _grid[c.y][c.x] != EMPTY:
+				lifted.append(Vector2i(dx, dy))
+				colors.append(int(_grid[c.y][c.x]))
+	if lifted.is_empty():
+		return false
+
+	for i in lifted.size():
+		var c: Vector2i = at + lifted[i]
+		_grid[c.y][c.x] = EMPTY
+		_pops.erase(c)
+
+	var best_at := Vector2i(-1, -1)
+	var best_gain := -1
+	for _try in int(spec["tries"]):
+		var dest := Vector2i(randi() % grid, randi() % grid)
+		if dest == at or not can_place(lifted, dest):
+			continue
+		if not bool(spec["smart"]):
+			best_at = dest
+			break
+		var gain := _lines_completed_by(lifted, dest)
+		if gain > best_gain:
+			best_gain = gain
+			best_at = dest
+
+	# Nowhere to go: put it back exactly where it was. The caller reads this as
+	# a misfire and refunds, so a full board cannot eat the charge.
+	if best_at.x < 0:
+		for i in lifted.size():
+			var c: Vector2i = at + lifted[i]
+			_grid[c.y][c.x] = colors[i]
+		return false
+
+	var landed: Array = []
+	for i in lifted.size():
+		var c: Vector2i = best_at + lifted[i]
+		_grid[c.y][c.x] = colors[i]
+		_pops[c] = 0.0
+		landed.append(c)
+
+	var from_cells: Array = []
+	for off: Vector2i in lifted:
+		from_cells.append(at + off)
+	blocks_teleported.emit(from_cells, landed, colors[0])
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+	return true
+
+
+## How many rows and columns would be completed by dropping `cells` at
+## `origin`. Used to choose between candidate teleport destinations.
+func _lines_completed_by(cells: Array, origin: Vector2i) -> int:
+	var filled := {}
+	for c: Vector2i in cells:
+		filled[origin + c] = true
+	var count := 0
+	for y in grid:
+		var full := true
+		for x in grid:
+			if _grid[y][x] == EMPTY and not filled.has(Vector2i(x, y)):
+				full = false
+				break
+		if full:
+			count += 1
+	for x in grid:
+		var full := true
+		for y in grid:
+			if _grid[y][x] == EMPTY and not filled.has(Vector2i(x, y)):
+				full = false
+				break
+		if full:
+			count += 1
+	return count
 
 
 func _resolve_lines() -> void:

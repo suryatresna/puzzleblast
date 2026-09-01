@@ -104,7 +104,7 @@ The play screen splits cleanly in three. Respect this when adding features:
 - **`scenes/game.gd`** — orchestration. Turns board signals into HUD updates, effects, screen shake and tray management. Owns all input.
 - **`scripts/effects.gd`** — a `Node2D` that spawns particles, flashes, shockwaves and popups. Stateless with respect to the game.
 
-`board.gd` signals: `score_changed`, `lines_cleared`, `piece_placed`, `bomb_detonated`, `laser_fired`, `diagonal_fired`, `board_morphed`, `piece_fitted`, `game_over`.
+`board.gd` signals: `score_changed`, `lines_cleared`, `piece_placed`, `bomb_detonated`, `laser_fired`, `diagonal_fired`, `blackhole_fired`, `thunder_struck`, `blocks_teleported`, `board_morphed`, `piece_fitted`, `game_over`.
 
 ### Two effects layers
 
@@ -117,7 +117,13 @@ The play screen splits cleanly in three. Respect this when adding features:
 
 `scripts/blocks.gd` holds 18 base shapes in `BASE`, including three diagonals; rotations are **generated at load** and de-duplicated, producing 37 pieces. To add a shape, add one line to `BASE` — do not hand-write rotations. Pieces are plain `Dictionary` values: `{cells, color, size, weight}`, plus `power` for a special.
 
-**Five powers**, in `Blocks.Power`: bomb, collapse (`MORPH`), laser, fit, and diagonal. `Blocks.COLORS` is a flat 13-entry table — eight shape colours then five power colours — and `Blocks.POWER_COLOR` maps each power to its index (8..12). Adding a sixth means an entry in every theme's `powers` array, a glyph in `Themes.GLYPHS`, a sprite from the generator, a branch in `Board._fire_power` **and** one in `Blocks.draw_power`. Both matches are written `Blocks.Power.X` in board.gd and `Power.X` in blocks.gd; miss one and the power is dealt but silently does nothing.
+**Eight powers**, in `Blocks.Power`: bomb, collapse (`MORPH`), laser, fit, diagonal, blackhole, thunder and teleport. `Blocks.COLORS` is a flat 16-entry table — eight shape colours then eight power colours — and `Blocks.POWER_COLOR` maps each power to its index (8..15). Adding a ninth means an entry in every theme's `powers` array, a glyph in `Themes.GLYPHS`, a sprite from the generator, a branch in `Board._fire_power` **and** one in `Blocks.draw_power`, plus `ALL_POWERS`, `POWER_NAMES`, `Progress.COST` and a `"power"` grant in `Progress.REWARDS`. Both matches are written `Blocks.Power.X` in board.gd and `Power.X` in blocks.gd; miss one and the power is dealt but silently does nothing.
+
+The three newest differ from the first five in kind, not just in numbers:
+
+- **Blackhole** takes a *disc* — a Euclidean radius — where the bomb takes a square, so its corners survive. Levels are supersets for free, since a larger radius contains the smaller.
+- **Thunder** strikes random *occupied* cells and ignores where it was dropped. It is the only power whose reach cannot be a superset cell-for-cell; the ramp is monotonic in expectation instead. It is the answer to a board too full to place into.
+- **Teleport** is the only power that *rearranges* rather than removes: it lifts the span×span block at the target and sets it down where it fits, preferring destinations that complete lines at level 3+. It is also the only power that can **misfire** — a full board has nowhere to put the block — which is why `_fire_power` and `place()` return `bool`. A misfire restores every block exactly and returns false, and `game.gd` reads that as a free cancel.
 
 The **bomb** is a 1×1 special that clears the half of the board it lands in (split on the horizontal midline). It arrives two ways: a 20% roll **per tray refill** (never per card — that could deal three at once), and as a reward for a 2× combo. Both paths respect one invariant: **at most one bomb in hand at a time**.
 
@@ -188,7 +194,7 @@ Powers no longer appear in the tray. They are unlocked by levelling, equipped to
 - **`board.gd` owns what a power does**, via the level tables next to the scoring constants (`BOMB_BY_LEVEL` and friends). `Progress` owns cost and XP, never geometry — that keeps `board.gd` testable with a bare `Board` and an int, with no autoload to register.
 - **Level 2 reproduces each power's pre-progression behaviour.** A maxed power beats what shipped; a fresh one is weaker.
 - **Each bomb level must be a strict superset of the last.** That is not automatic: on an 8×8 board a 7×7 blast covers 49 cells against half the board's 32, so "half the board" cannot cap the ramp.
-- **`can_target()` gates power placement**, not `can_place()`. Only destructive powers may be aimed at an occupied cell; `MORPH` and `FIT` both assign into `_grid` at the target, so relaxing them would silently recolour a block.
+- **`can_target()` gates power placement**, not `can_place()`. Only destructive powers may be aimed at an occupied cell; `MORPH` and `FIT` both assign into `_grid` at the target, so relaxing them would silently recolour a block. `TELEPORT` is the mirror image — it is in `OCCUPIED_POWERS` and requires a block *under* it, since there is nothing to pick up over an empty cell.
 - **In `_fire_power`, read the level before spending and spend after `place()` returns.** Spending records a use and can level the power up mid-shot, and a drop the board refuses must not bill the player.
 - **`_check_game_over()` replaces the bare `has_any_move` test.** A dead tray does not end the run while a charged power remains. `board.gd` knows nothing about this; `game.gd` decides when to call `declare_game_over`.
 - **Score is banked as XP continuously**, not in one lump at game over: `game.gd._bank()` sends only the delta since the last call, so a level can land mid-run and feeding it twice cannot double-count. `_on_game_over` just tops up the remainder.
@@ -212,7 +218,7 @@ Two layout traps seen in this repo:
 
 - Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
 - The leaderboard tags every row with its mode and filters by it; difficulty level is no longer recorded or shown anywhere.
-- `scenes/profile.tscn` shows level, XP, streak and the five powers, and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
+- `scenes/profile.tscn` shows level, XP, streak and all eight powers (in a `ScrollContainer`, so the list grows without a layout change), and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
 - `scenes/modes.tscn` covers Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
 - `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. Difficulty is deliberately absent — it follows the score during a run, so there is nothing to set. The design's RESTORE PURCHASES is not built — there is no IAP.
 - Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.

@@ -101,6 +101,9 @@ func _ready() -> void:
 	_board.bomb_detonated.connect(_on_bomb_detonated)
 	_board.laser_fired.connect(_on_laser_fired)
 	_board.diagonal_fired.connect(_on_diagonal_fired)
+	_board.blackhole_fired.connect(_on_blackhole_fired)
+	_board.thunder_struck.connect(_on_thunder_struck)
+	_board.blocks_teleported.connect(_on_blocks_teleported)
 	_board.board_morphed.connect(_on_board_morphed)
 	_board.piece_fitted.connect(_on_piece_fitted)
 	_board.lines_cleared.connect(_on_lines_cleared)
@@ -697,6 +700,58 @@ func _on_diagonal_fired(at: Vector2i, cleared: int, points: int, _level := 1) ->
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
 	_shake = 20.0
 	Haptics.blast()
+	_sync_tray()
+
+
+## The blackhole. A shockwave sized to the disc rather than a directional
+## blast, so it reads as a collapse inward instead of an explosion outward.
+func _on_blackhole_fired(at: Vector2i, radius: float, cleared: int, points: int) -> void:
+	Audio.play("bomb", 0.75)
+	var cell: float = _board.cell_size()
+	var centre := (Vector2(at) + Vector2(0.5, 0.5)) * cell
+	var tint: Color = Blocks.power_color(Blocks.Power.BLACKHOLE)
+	var reach: float = (radius + 0.5) * cell
+	_effects.explode_bomb(centre, Rect2(centre - Vector2(reach, reach),
+		Vector2(reach, reach) * 2.0), cell, tint)
+	_overlay.combo_banner_text("BLACKHOLE!", tint)
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	print_verbose("blackhole r=%.1f cleared %d for %d" % [radius, cleared, points])
+	_shake = 22.0
+	Haptics.blast()
+	_sync_tray()
+
+
+## Thunder. One puff per strike rather than a single blast, because the strikes
+## are scattered and a blast at any one of them would misreport where it hit.
+func _on_thunder_struck(cells: Array, cleared: int, points: int) -> void:
+	Audio.play("laser", 1.15)
+	var cell: float = _board.cell_size()
+	var tint: Color = Blocks.power_color(Blocks.Power.THUNDER)
+	for c: Vector2i in cells:
+		_effects.place_puff([c], cell, tint)
+	_overlay.combo_banner_text("THUNDER!", tint)
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	print_verbose("thunder struck %d cells for %d" % [cleared, points])
+	_shake = 8.0 + mini(cells.size(), 8) * 1.5
+	Haptics.blast()
+	_sync_tray()
+
+
+## Teleport. Puffs at both ends -- the block leaving and the block arriving --
+## so the eye can follow where it went.
+func _on_blocks_teleported(from_cells: Array, to_cells: Array, color_index: int) -> void:
+	Audio.play("fit", 0.9)
+	var cell: float = _board.cell_size()
+	var tint: Color = Blocks.power_color(Blocks.Power.TELEPORT)
+	_effects.place_puff(from_cells, cell, tint)
+	_effects.place_puff(to_cells, cell, Blocks.COLORS[color_index])
+	_overlay.combo_banner_text("TELEPORT!", tint)
+	_shake = 6.0
+	Haptics.clear_lines(2)
 	_sync_tray()
 
 

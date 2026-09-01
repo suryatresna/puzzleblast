@@ -19,10 +19,13 @@ const COLORS := [
 	Color("fde047"), # laser
 	Color("a3e635"), # fit
 	Color("38bdf8"), # diagonal
+	Color("8b5cf6"), # blackhole
+	Color("e0f2fe"), # thunder
+	Color("d946ef"), # teleport
 ]
 
 ## Special single-cell pieces. NONE is an ordinary shape.
-enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL }
+enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL, BLACKHOLE, THUNDER, TELEPORT }
 
 ## Palette index and glyph for each power.
 const POWER_COLOR := {
@@ -31,6 +34,9 @@ const POWER_COLOR := {
 	Power.LASER: 10,
 	Power.FIT: 11,
 	Power.DIAGONAL: 12,
+	Power.BLACKHOLE: 13,
+	Power.THUNDER: 14,
+	Power.TELEPORT: 15,
 }
 
 const BOMB_COLOR := 8
@@ -125,7 +131,7 @@ static func is_bomb(piece: Dictionary) -> bool:
 ## Every special. Both the dealt hand and the combo reward draw from this, with
 ## equal odds, so any of the four can turn up either way.
 const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT,
-	Power.DIAGONAL]
+	Power.DIAGONAL, Power.BLACKHOLE, Power.THUNDER, Power.TELEPORT]
 
 ## Shown on the call-out when a streak earns a special.
 const POWER_NAMES := {
@@ -134,6 +140,9 @@ const POWER_NAMES := {
 	Power.LASER: "LASER!",
 	Power.FIT: "FIT!",
 	Power.DIAGONAL: "CROSSFIRE!",
+	Power.BLACKHOLE: "BLACKHOLE!",
+	Power.THUNDER: "THUNDER!",
+	Power.TELEPORT: "TELEPORT!",
 }
 
 
@@ -242,6 +251,50 @@ static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
 		Power.LASER: _draw_laser(ci, rect)
 		Power.FIT: _draw_fit(ci, rect)
 		Power.DIAGONAL: _draw_diagonal(ci, rect)
+		Power.BLACKHOLE: _draw_blackhole(ci, rect)
+		Power.THUNDER: _draw_thunder(ci, rect)
+		Power.TELEPORT: _draw_teleport(ci, rect)
+
+
+## A ring with a dark core: the circle of pull, and the hole at the middle.
+static func _draw_blackhole(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.06, 0.03, 0.13)
+	ci.draw_arc(c, span * 0.28, 0.0, TAU, 28, ink, maxf(2.0, span * 0.09))
+	ci.draw_circle(c, span * 0.11, ink)
+
+
+## A bolt. Drawn as one polygon so it stays sharp at any size.
+static func _draw_thunder(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.10, 0.16, 0.22)
+	var pts := PackedVector2Array([
+		c + Vector2(span * 0.06, -span * 0.32),
+		c + Vector2(-span * 0.20, span * 0.04),
+		c + Vector2(-span * 0.02, span * 0.04),
+		c + Vector2(-span * 0.08, span * 0.32),
+		c + Vector2(span * 0.20, -span * 0.06),
+		c + Vector2(span * 0.01, -span * 0.06),
+	])
+	ci.draw_colored_polygon(pts, ink)
+
+
+## A portal: a diamond gateway with the block already through it.
+static func _draw_teleport(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.16, 0.03, 0.16)
+	var r := span * 0.30
+	var thick := maxf(2.0, span * 0.08)
+	var d := PackedVector2Array([
+		c + Vector2(0, -r), c + Vector2(r, 0), c + Vector2(0, r), c + Vector2(-r, 0),
+	])
+	for i in 4:
+		ci.draw_line(d[i], d[(i + 1) % 4], ink, thick)
+	ci.draw_rect(Rect2(c - Vector2(span * 0.09, span * 0.09),
+		Vector2(span * 0.18, span * 0.18)), ink)
 
 
 ## Three chevrons falling: the whole board drops and compacts.

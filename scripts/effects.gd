@@ -155,8 +155,11 @@ func _shockwave(center: Vector2, extent: float, power: float) -> void:
 
 ## The bomb blast: a fireball at the bomb itself, then debris and a flash
 ## across the whole half of the board it takes out.
-func explode_bomb(at: Vector2, region: Rect2, cell: float) -> void:
-	var fire := Color(1, 0.55, 0.2)
+## `tint` defaults to the bomb's fire. The blackhole passes its own violet --
+## without it the banner said BLACKHOLE over an unmistakably orange explosion.
+func explode_bomb(at: Vector2, region: Rect2, cell: float,
+		tint := Color(1, 0.55, 0.2)) -> void:
+	var fire := tint
 
 	_core_flash(region, 2.6, fire, region.size.x >= region.size.y, 1.14)
 	_debris(region, 2.4, fire)

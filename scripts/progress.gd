@@ -51,8 +51,13 @@ const REWARDS := {
 	8: {"power": 1},
 	10: {"theme": ThemesScript.Id.CLASSIC},
 	12: {"power": 1},
+	14: {"power": 1},
 	15: {"charge": 5},
-	18: {"charge": 5},
+	16: {"power": 1},
+	# Carries both. Putting the eighth power on its own level would have meant
+	# L22, which is 1.56M lifetime -- an order past where the curve was ever
+	# designed to reach. L18 is 467k, the tail the table already had.
+	18: {"charge": 5, "power": 1},
 	20: {"charge": 5},
 }
 
@@ -76,6 +81,9 @@ const COST := {
 	Blocks.Power.LASER: 5,
 	Blocks.Power.FIT: 3,
 	Blocks.Power.DIAGONAL: 5,
+	Blocks.Power.BLACKHOLE: 7,
+	Blocks.Power.THUNDER: 4,
+	Blocks.Power.TELEPORT: 5,
 }
 
 const BASE_MAX_CHARGE := 10

@@ -190,6 +190,24 @@ def glyph(name):
                         continue
                     d.point((t + ox, t + oy), fill=W)
                     d.point((t + ox, (a + b) - t + oy), fill=W)
+    elif name == "blackhole":
+        # A ring with the hole punched back out, so the glyph reads as a mouth
+        # rather than a filled dot at tile size.
+        d.ellipse([a, a, b, b], fill=W)
+        d.ellipse([a + 6, a + 6, b - 6, b - 6], fill=(0, 0, 0, 0))
+    elif name == "thunder":
+        d.polygon([(mid + 1, a), (a + 3, mid + 2), (mid - 1, mid + 2),
+                   (mid - 2, b), (b - 3, mid - 2), (mid + 1, mid - 2)], fill=W)
+    elif name == "teleport":
+        # A diamond gateway with the block already through it.
+        for i in range(mid - a + 1):
+            d.point((mid - i, mid - (mid - a - i)), fill=W)
+            d.point((mid + i, mid - (mid - a - i)), fill=W)
+            d.point((mid - i, mid + (mid - a - i)), fill=W)
+            d.point((mid + i, mid + (mid - a - i)), fill=W)
+            d.point((mid - i + 1, mid - (mid - a - i)), fill=W)
+            d.point((mid + i - 1, mid + (mid - a - i)), fill=W)
+        d.rectangle([mid - 2, mid - 2, mid + 1, mid + 1], fill=W)
     elif name == "fit":
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):        # 4 arrows
             cx = mid + dx * 6
@@ -219,6 +237,7 @@ if __name__ == "__main__":
     save(plate_sprite(0.90), "panel")
     # dark panels: #3A2C22 -> #241C16 is a much steeper ~0.62
     save(plate_sprite(0.62, ink=(15, 12, 10, 255)), "panel_dark")
-    for g in ("bomb", "laser", "collapse", "fit", "diagonal"):
+    for g in ("bomb", "laser", "collapse", "fit", "diagonal",
+              "blackhole", "thunder", "teleport"):
         save(glyph(g), "glyph_" + g)
     print("done -> ui/pixel/")
