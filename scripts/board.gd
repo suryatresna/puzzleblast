@@ -16,6 +16,8 @@ signal diagonal_fired(at: Vector2i, cleared: int, points: int, level: int)
 signal blackhole_fired(at: Vector2i, radius: float, cleared: int, points: int)
 signal thunder_struck(cells: Array, cleared: int, points: int)
 signal blocks_teleported(from_cells: Array, to_cells: Array, color_index: int)
+signal meteor_landed(cells: Array, color_index: int, points: int)
+signal tsunami_swept(cells: Array, color_index: int, points: int)
 signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
@@ -102,6 +104,22 @@ const THUNDER_BY_LEVEL := [
 	{"strikes": 8, "splash": true},
 ]
 
+## Meteor and tsunami are the only powers that ADD blocks, so they are the only
+## ones that can make the board worse. Both must leave at least this many cells
+## empty AFTER the lines they complete have cleared: `_check_game_over` runs
+## after every drop, so a fill that took the last of the room could end the run
+## on the shot the player just paid for. It is a floor, not a proof that a
+## given tray piece still fits, and a fill with no safe size refuses outright
+## and is refunded rather than firing into a corner.
+const FILL_FLOOR_ROWS := 1
+
+## Both filling powers take a FRACTION of whatever is still empty, so their
+## reach scales with the room available rather than with a fixed cell count.
+## Three levels is the whole range that expresses: half of it, most of it,
+## nearly all of it. Progress.POWER_MAX_LEVEL caps these two at 3 to match.
+const FILL_SHARE_BY_LEVEL := [0.50, 0.70, 0.95]
+const FILL_MAX_LEVEL := 3
+
 ## Teleport lifts the span x span block at the target and sets it down
 ## somewhere it fits. `tries` is how many destinations are sampled; `smart`
 ## picks the sampled destination that completes the most lines rather than the
@@ -118,6 +136,12 @@ const TELEPORT_BY_LEVEL := [
 ## Clamps a level to the table range.
 static func _lvl(level: int) -> int:
 	return clampi(level, 1, MAX_POWER_LEVEL) - 1
+
+
+## Clamps to a table that is SHORTER than MAX_POWER_LEVEL. The filling powers
+## cap at three levels, so indexing them with _lvl() would run off the end.
+static func _lvl_in(level: int, count: int) -> int:
+	return clampi(level, 1, count) - 1
 ## How long settled blocks take to drop after a morph.
 const FALL_TIME := 0.30
 const LINE_BASE := 100
@@ -349,6 +373,8 @@ func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int,
 		Blocks.Power.BLACKHOLE: _blackhole(at, level)
 		Blocks.Power.THUNDER: _thunder(at, level)
 		Blocks.Power.TELEPORT: return _teleport(at, level)
+		Blocks.Power.METEOR: return _meteor(color_index, level)
+		Blocks.Power.TSUNAMI: return _tsunami(color_index, level)
 	return true
 
 
@@ -669,6 +695,183 @@ func _teleport(at: Vector2i, level := 1) -> bool:
 	for off: Vector2i in lifted:
 		from_cells.append(at + off)
 	blocks_teleported.emit(from_cells, landed, colors[0])
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+	return true
+
+
+## Every empty cell on the board.
+func _empty_cells() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for y in grid:
+		for x in grid:
+			if _grid[y][x] == EMPTY:
+				out.append(Vector2i(x, y))
+	return out
+
+
+## How close this cell is to completing a line: the fuller of its row and its
+## column. Filling the highest-pressure cell is what makes an aimed meteor
+## finish lines rather than clutter the board.
+func _fill_pressure(cell: Vector2i) -> int:
+	var row := 0
+	var col := 0
+	for i in grid:
+		if _grid[cell.y][i] != EMPTY:
+			row += 1
+		if _grid[i][cell.x] != EMPTY:
+			col += 1
+	return maxi(row, col)
+
+
+## Writes `cells` into the grid and scores them, then resolves any lines they
+## completed. Shared by both filling powers.
+func _settle_fill(cells: Array, color_index: int) -> int:
+	for c: Vector2i in cells:
+		_grid[c.y][c.x] = color_index
+		_pops[c] = 0.0
+	var points: int = cells.size() * POINTS_PER_CELL
+	score += points
+	return points
+
+
+## How many cells would be empty if `order[0..n)` were filled and every line
+## that completed then cleared. Exact rather than a guess: it is what lets the
+## fill honour a 95% share whenever that is safe, instead of capping every cast
+## at a conservative floor.
+func _empties_after_fill(order: Array, n: int) -> int:
+	var filled := {}
+	for i in n:
+		filled[order[i]] = true
+
+	var full_rows := {}
+	var full_cols := {}
+	for y in grid:
+		var whole := true
+		for x in grid:
+			if _grid[y][x] == EMPTY and not filled.has(Vector2i(x, y)):
+				whole = false
+				break
+		if whole:
+			full_rows[y] = true
+	for x in grid:
+		var whole := true
+		for y in grid:
+			if _grid[y][x] == EMPTY and not filled.has(Vector2i(x, y)):
+				whole = false
+				break
+		if whole:
+			full_cols[x] = true
+
+	var empty := 0
+	for y in grid:
+		for x in grid:
+			if full_rows.has(y) or full_cols.has(x):
+				empty += 1
+				continue
+			if _grid[y][x] == EMPTY and not filled.has(Vector2i(x, y)):
+				empty += 1
+	return empty
+
+
+## The largest prefix of `order` that still leaves the board alive. Safety is
+## NOT monotonic -- filling more can clear more and end up emptier -- so this
+## walks down from what the level asked for and takes the first size that
+## holds, which is the biggest one at or under the request.
+func _safe_fill_size(order: Array, want: int) -> int:
+	var floor_cells: int = grid * FILL_FLOOR_ROWS
+	for n in range(want, -1, -1):
+		if _empties_after_fill(order, n) >= floor_cells:
+			return n
+	return 0
+
+
+## How many cells this level fills, as a share of what is still empty.
+func _fill_share(empties: int, level: int) -> int:
+	var share: float = float(FILL_SHARE_BY_LEVEL[_lvl_in(level, FILL_MAX_LEVEL)])
+	return int(round(float(empties) * share))
+
+
+## Rains single blocks onto empty cells, hunting for the ones that complete a
+## line. Level sets the share of the empty board it takes: half, most, or
+## nearly all of it. Whatever it completes clears on the spot, so a big meteor
+## usually hands back more room than it took.
+func _meteor(color_index: int, level := 1) -> bool:
+	var empties := _empty_cells()
+	if empties.is_empty():
+		return false
+	empties.shuffle()                        # ties resolve differently each cast
+
+	# Ordered greedily by line pressure, recomputed as the fill goes, so the
+	# volley finishes one line before starting another rather than smearing
+	# across the board.
+	var order: Array = []
+	var pool := empties.duplicate()
+	var want: int = _fill_share(empties.size(), level)
+	var pending := {}
+	while order.size() < want and not pool.is_empty():
+		var pick := 0
+		var best := -1
+		for k in pool.size():
+			var p: int = _fill_pressure(pool[k]) + _pending_pressure(pending, pool[k])
+			if p > best:
+				best = p
+				pick = k
+		var cell: Vector2i = pool[pick]
+		pool.remove_at(pick)
+		order.append(cell)
+		pending[cell] = true
+
+	var take := _safe_fill_size(order, order.size())
+	if take <= 0:
+		return false
+	var landed: Array = order.slice(0, take)
+	var points := _settle_fill(landed, color_index)
+	meteor_landed.emit(landed, color_index, points)
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+	return true
+
+
+## Rows and columns this cell shares with cells already queued for the fill.
+## Without it the greedy order would keep picking from the same untouched row,
+## because writing has not happened yet and _fill_pressure cannot see the plan.
+func _pending_pressure(pending: Dictionary, cell: Vector2i) -> int:
+	var row := 0
+	var col := 0
+	for c: Vector2i in pending:
+		if c.y == cell.y:
+			row += 1
+		if c.x == cell.x:
+			col += 1
+	return maxi(row, col)
+
+
+## Floods the board from the bottom up, like water, taking a share of whatever
+## is empty. Filling the lowest gaps first is the aim: those are the rows a run
+## leaves most nearly complete.
+func _tsunami(color_index: int, level := 1) -> bool:
+	var empties := _empty_cells()
+	if empties.is_empty():
+		return false
+	# Bottom row first; within a row, the fuller column first, so a wave that
+	# cannot finish a row still leaves the board tidier than it found it.
+	empties.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y != b.y:
+			return a.y > b.y
+		return _fill_pressure(a) > _fill_pressure(b))
+
+	var want: int = _fill_share(empties.size(), level)
+	var take := _safe_fill_size(empties, want)
+	if take <= 0:
+		return false
+	var filled: Array = empties.slice(0, take)
+	var points := _settle_fill(filled, color_index)
+	tsunami_swept.emit(filled, color_index, points)
 	_resolve_lines()
 	best = maxi(best, score)
 	score_changed.emit(score, best, combo)

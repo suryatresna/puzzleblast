@@ -22,10 +22,13 @@ const COLORS := [
 	Color("8b5cf6"), # blackhole
 	Color("e0f2fe"), # thunder
 	Color("d946ef"), # teleport
+	Color("c2410c"), # meteor
+	Color("0369a1"), # tsunami
 ]
 
 ## Special single-cell pieces. NONE is an ordinary shape.
-enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL, BLACKHOLE, THUNDER, TELEPORT }
+enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL, BLACKHOLE, THUNDER,
+	TELEPORT, METEOR, TSUNAMI }
 
 ## Palette index and glyph for each power.
 const POWER_COLOR := {
@@ -37,6 +40,8 @@ const POWER_COLOR := {
 	Power.BLACKHOLE: 13,
 	Power.THUNDER: 14,
 	Power.TELEPORT: 15,
+	Power.METEOR: 16,
+	Power.TSUNAMI: 17,
 }
 
 const BOMB_COLOR := 8
@@ -131,7 +136,8 @@ static func is_bomb(piece: Dictionary) -> bool:
 ## Every special. Both the dealt hand and the combo reward draw from this, with
 ## equal odds, so any of the four can turn up either way.
 const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT,
-	Power.DIAGONAL, Power.BLACKHOLE, Power.THUNDER, Power.TELEPORT]
+	Power.DIAGONAL, Power.BLACKHOLE, Power.THUNDER, Power.TELEPORT,
+	Power.METEOR, Power.TSUNAMI]
 
 ## Shown on the call-out when a streak earns a special.
 const POWER_NAMES := {
@@ -143,6 +149,8 @@ const POWER_NAMES := {
 	Power.BLACKHOLE: "BLACKHOLE!",
 	Power.THUNDER: "THUNDER!",
 	Power.TELEPORT: "TELEPORT!",
+	Power.METEOR: "METEOR!",
+	Power.TSUNAMI: "TSUNAMI!",
 }
 
 
@@ -254,6 +262,39 @@ static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
 		Power.BLACKHOLE: _draw_blackhole(ci, rect)
 		Power.THUNDER: _draw_thunder(ci, rect)
 		Power.TELEPORT: _draw_teleport(ci, rect)
+		Power.METEOR: _draw_meteor(ci, rect)
+		Power.TSUNAMI: _draw_tsunami(ci, rect)
+
+
+## A rock on a streaking trail.
+static func _draw_meteor(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.16, 0.06, 0.02)
+	var head := c + Vector2(span * 0.13, span * 0.15)
+	for i in 3:
+		var off := span * (0.10 + i * 0.09)
+		ci.draw_line(head - Vector2(off, off) - Vector2(span * 0.10, 0.0),
+			head - Vector2(off, off) + Vector2(span * 0.06, 0.0),
+			ink, maxf(2.0, span * 0.06))
+	ci.draw_circle(head, span * 0.17, ink)
+
+
+## Three stacked swells: the wave coming in.
+static func _draw_tsunami(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.01, 0.10, 0.20)
+	var thick := maxf(2.0, span * 0.075)
+	var w := span * 0.30
+	for i in 3:
+		var y: float = c.y - span * 0.18 + i * span * 0.18
+		# Each swell is a shallow arc, drawn as two strokes meeting at a crest.
+		ci.draw_line(Vector2(c.x - w, y), Vector2(c.x - w * 0.35, y - w * 0.30),
+			ink, thick)
+		ci.draw_line(Vector2(c.x - w * 0.35, y - w * 0.30), Vector2(c.x, y), ink, thick)
+		ci.draw_line(Vector2(c.x, y), Vector2(c.x + w * 0.35, y - w * 0.30), ink, thick)
+		ci.draw_line(Vector2(c.x + w * 0.35, y - w * 0.30), Vector2(c.x + w, y), ink, thick)
 
 
 ## A ring with a dark core: the circle of pull, and the hole at the middle.

@@ -208,6 +208,24 @@ def glyph(name):
             d.point((mid - i + 1, mid - (mid - a - i)), fill=W)
             d.point((mid + i - 1, mid + (mid - a - i)), fill=W)
         d.rectangle([mid - 2, mid - 2, mid + 1, mid + 1], fill=W)
+    elif name == "meteor":
+        # A rock low-right with three streaks trailing up-left behind it.
+        d.ellipse([mid - 2, mid - 2, b, b], fill=W)
+        for i in range(3):
+            oy = a + i * 5
+            d.line([(a, oy), (a + 7, oy + 7)], fill=W, width=2)
+    elif name == "tsunami":
+        # Three swells as a triangle wave. Amplitude has to be a good third of
+        # the row spacing or the crests flatten out and it reads as stripes.
+        span = b - a
+        period = span / 2.0
+        for y in (a + 2, a + 9, a + 16):
+            for k in range(span + 1):
+                phase = (k % period) / period          # 0..1 across one swell
+                dy = phase * 2.0 if phase < 0.5 else (1.0 - phase) * 2.0
+                oy = y + round(3 - dy * 3)             # crest up, trough down
+                d.point((a + k, oy), fill=W)
+                d.point((a + k, oy + 1), fill=W)
     elif name == "fit":
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):        # 4 arrows
             cx = mid + dx * 6
@@ -238,6 +256,6 @@ if __name__ == "__main__":
     # dark panels: #3A2C22 -> #241C16 is a much steeper ~0.62
     save(plate_sprite(0.62, ink=(15, 12, 10, 255)), "panel_dark")
     for g in ("bomb", "laser", "collapse", "fit", "diagonal",
-              "blackhole", "thunder", "teleport"):
+              "blackhole", "thunder", "teleport", "meteor", "tsunami"):
         save(glyph(g), "glyph_" + g)
     print("done -> ui/pixel/")

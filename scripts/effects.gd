@@ -50,19 +50,39 @@ var _points: Label = null
 
 
 ## `rows` and `cols` are index lists; `extent` is the board's pixel size.
+## A mass clear -- a 95% tsunami can complete a dozen lines at once -- spawns a
+## blast per line at a power that scales with the count, which together buried
+## the board under a solid sheet of particles. Both are capped just above what
+## a hand-played clear reaches, so at four lines or fewer nothing changes: the
+## power formula already tops out at 2.2 there, and four blasts is the whole
+## board's worth. The cells still all clear; only the fireworks are sampled.
+const MAX_BLAST_LINES := 4
+const MAX_BLAST_POWER := 2.2
+
+
 func explode_lines(rows: Array, cols: Array, extent: float, cell: float, color: Color) -> void:
 	var line_count: int = rows.size() + cols.size()
-	var power := 1.0 + (line_count - 1) * 0.4
+	var power := minf(1.0 + (line_count - 1) * 0.4, MAX_BLAST_POWER)
 	var centers: Array = []
 
+	# Every line contributes its centre, so the one shockwave still lands in
+	# the middle of everything that went, even when the blasts are sampled.
+	var rects: Array = []
 	for y: int in rows:
 		var rect := Rect2(0.0, y * cell, extent, cell)
-		_blast(rect, power, color, true)
+		rects.append({"rect": rect, "horizontal": true})
 		centers.append(rect.get_center())
 	for x: int in cols:
 		var rect := Rect2(x * cell, 0.0, cell, extent)
-		_blast(rect, power, color, false)
+		rects.append({"rect": rect, "horizontal": false})
 		centers.append(rect.get_center())
+
+	var step: float = maxf(1.0, float(rects.size()) / float(MAX_BLAST_LINES))
+	var drawn := 0
+	while drawn < mini(rects.size(), MAX_BLAST_LINES):
+		var entry: Dictionary = rects[int(drawn * step)]
+		_blast(entry["rect"], power, color, bool(entry["horizontal"]))
+		drawn += 1
 
 	if centers.is_empty():
 		return

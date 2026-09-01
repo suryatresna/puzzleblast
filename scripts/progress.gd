@@ -49,7 +49,7 @@ const REWARDS := {
 	5: {"theme": ThemesScript.Id.PIXEL_WARM},
 	6: {"power": 1, "slot": 1},
 	8: {"power": 1},
-	10: {"theme": ThemesScript.Id.CLASSIC},
+	10: {"theme": ThemesScript.Id.CLASSIC, "power": 1},
 	12: {"power": 1},
 	14: {"power": 1},
 	15: {"charge": 5},
@@ -58,7 +58,7 @@ const REWARDS := {
 	# L22, which is 1.56M lifetime -- an order past where the curve was ever
 	# designed to reach. L18 is 467k, the tail the table already had.
 	18: {"charge": 5, "power": 1},
-	20: {"charge": 5},
+	20: {"charge": 5, "power": 1},
 }
 
 # --- powers ------------------------------------------------------------------
@@ -69,6 +69,14 @@ const BIG_BOARD_LEVEL := 25
 
 const LOADOUT_SIZE := 3
 const MAX_POWER_LEVEL := 5
+
+## Powers that cap below MAX_POWER_LEVEL. The two filling powers scale by a
+## fraction of the empty board rather than by a cell count, and three steps
+## (half, most, nearly all of it) is the whole range that expresses.
+const POWER_MAX_LEVEL := {
+	Blocks.Power.METEOR: 3,
+	Blocks.Power.TSUNAMI: 3,
+}
 
 ## Cumulative uses to reach each level. Index 0 is level 1, so a freshly
 ## unlocked power starts at 1 with zero uses.
@@ -84,6 +92,8 @@ const COST := {
 	Blocks.Power.BLACKHOLE: 7,
 	Blocks.Power.THUNDER: 4,
 	Blocks.Power.TELEPORT: 5,
+	Blocks.Power.METEOR: 5,
+	Blocks.Power.TSUNAMI: 6,
 }
 
 const BASE_MAX_CHARGE := 10
@@ -306,20 +316,25 @@ func uses_of(power: int) -> int:
 	return int(_uses.get(power, 0))
 
 
-## 1..MAX_POWER_LEVEL, from the use count.
+## The top level this power can reach. Most go to MAX_POWER_LEVEL.
+func max_level_of(power: int) -> int:
+	return int(POWER_MAX_LEVEL.get(power, MAX_POWER_LEVEL))
+
+
+## 1..max_level_of(power), from the use count.
 func level_of(power: int) -> int:
 	var n := uses_of(power)
 	var level := 1
 	for i in range(1, USES_FOR_LEVEL.size()):
 		if n >= USES_FOR_LEVEL[i]:
 			level = i + 1
-	return level
+	return mini(level, max_level_of(power))
 
 
 ## Progress toward the next power level, 0..1. 1.0 when maxed.
 func power_progress(power: int) -> float:
 	var l := level_of(power)
-	if l >= MAX_POWER_LEVEL:
+	if l >= max_level_of(power):
 		return 1.0
 	var from: int = USES_FOR_LEVEL[l - 1]
 	var to: int = USES_FOR_LEVEL[l]

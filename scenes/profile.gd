@@ -147,12 +147,13 @@ func _card(power: int, pending: int) -> void:
 	else:
 		var lv := Progress.level_of(power)
 		var uses := Progress.uses_of(power)
-		if lv >= Progress.MAX_POWER_LEVEL:
-			blurb.text = "Level %d  ·  maxed  ·  %d uses" % [lv, uses]
+		if lv >= Progress.max_level_of(power):
+			blurb.text = "Level %d of %d  ·  maxed  ·  %d uses" % [
+				lv, Progress.max_level_of(power), uses]
 		else:
 			var need: int = Progress.USES_FOR_LEVEL[lv]
-			blurb.text = "Level %d  ·  %d/%d uses to level  ·  costs %d" % [
-				lv, uses, need, Progress.cost_of(power)]
+			blurb.text = "Level %d of %d  ·  %d/%d uses to level  ·  costs %d" % [
+				lv, Progress.max_level_of(power), uses, need, Progress.cost_of(power)]
 	if equipped:
 		blurb.add_theme_color_override("font_color", Themes.value("ink", Color.BLACK))
 	col.add_child(blurb)

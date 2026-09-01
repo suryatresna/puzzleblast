@@ -104,6 +104,8 @@ func _ready() -> void:
 	_board.blackhole_fired.connect(_on_blackhole_fired)
 	_board.thunder_struck.connect(_on_thunder_struck)
 	_board.blocks_teleported.connect(_on_blocks_teleported)
+	_board.meteor_landed.connect(_on_meteor_landed)
+	_board.tsunami_swept.connect(_on_tsunami_swept)
 	_board.board_morphed.connect(_on_board_morphed)
 	_board.piece_fitted.connect(_on_piece_fitted)
 	_board.lines_cleared.connect(_on_lines_cleared)
@@ -752,6 +754,61 @@ func _on_blocks_teleported(from_cells: Array, to_cells: Array, color_index: int)
 	_overlay.combo_banner_text("TELEPORT!", tint)
 	_shake = 6.0
 	Haptics.clear_lines(2)
+	_sync_tray()
+
+
+## Cells to puff for a filling power. Both now take a SHARE of the empty board,
+## so a big cast can land forty blocks at once -- one puff each buried the
+## board under a solid wall of particles. Sampling evenly keeps the impacts
+## spread across the whole area that was filled.
+const MAX_FILL_PUFFS := 10
+
+
+func _sample_cells(cells: Array, limit: int) -> Array:
+	if cells.size() <= limit:
+		return cells
+	var out: Array = []
+	var step: float = float(cells.size()) / float(limit)
+	for i in limit:
+		out.append(cells[int(i * step)])
+	return out
+
+
+## Meteor. Puffs at the impacts rather than one blast, because the drops are
+## scattered and a single burst would misreport where they landed. The blocks
+## themselves are drawn in the meteor's own palette entry, so the debris on the
+## board still reads as debris after the effect has gone.
+func _on_meteor_landed(cells: Array, color_index: int, points: int) -> void:
+	Audio.play("place", 0.8)
+	var cell: float = _board.cell_size()
+	var tint: Color = Blocks.COLORS[color_index]
+	for c: Vector2i in _sample_cells(cells, MAX_FILL_PUFFS):
+		_effects.place_puff([c], cell, tint)
+	_overlay.combo_banner_text("METEOR!", tint)
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	_shake = 6.0 + mini(cells.size(), 16) * 0.6
+	Haptics.blast()
+	# The board just gained blocks, so cards that fitted a moment ago may not.
+	_sync_tray()
+
+
+## Tsunami. The sweep runs across the board like the collapse does, but tinted
+## as water and followed by a puff on every cell the wave filled.
+func _on_tsunami_swept(cells: Array, color_index: int, points: int) -> void:
+	Audio.play("collapse", 0.85)
+	var cell: float = _board.cell_size()
+	var tint: Color = Blocks.COLORS[color_index]
+	_effects.morph_sweep(_board.size.x, tint)
+	for c: Vector2i in _sample_cells(cells, MAX_FILL_PUFFS):
+		_effects.place_puff([c], cell, tint)
+	_overlay.combo_banner_text("TSUNAMI!", tint)
+	if points > 0:
+		_overlay.points_popup("+%d" % points,
+			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
+	_shake = 8.0 + mini(cells.size(), 24) * 0.4
+	Haptics.clear_lines(3)
 	_sync_tray()
 
 
