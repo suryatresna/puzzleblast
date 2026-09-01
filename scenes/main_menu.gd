@@ -12,6 +12,9 @@ func _ready() -> void:
 	_sync_greeting()
 
 	%NewGameButton.pressed.connect(_new_game)
+	# The action is the same either way -- progression always carries over.
+	# The label just stops "New Game" reading like a reset.
+	%NewGameButton.text = "Continue" if Progress.has_progress() else "New Game"
 	%ModesButton.pressed.connect(App.goto_scene.bind(App.SCENE_MODES))
 	%ProfileButton.pressed.connect(App.goto_scene.bind(App.SCENE_PROFILE))
 	%LeaderboardButton.pressed.connect(App.goto_scene.bind(App.SCENE_LEADERBOARD))

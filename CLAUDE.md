@@ -172,7 +172,7 @@ Watch the token names: `#241C16` is the dark **panel**, but the dark **board** i
 
 Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
 
-- **Palette** — the original endless run. Nothing is added.
+- **Palette** — the endless run. Its grid is **level-driven**: 8x8 until `Progress.BIG_BOARD_LEVEL` (25), then 12x12. `Modes.grid_of()` reads `Progress` at call time, guarded, because `Modes` is registered first.
 - **Big Palette** — the same rules on a 12x12 grid. The board's grid is a variable (`Board.grid`, set from `Modes.GRIDS` in `_setup_mode`), not a constant; `Board.SIZE` is only the default now.
 - **Sprint** — `scripts/fuse_bar.gd` counts 60 seconds down as a burning fuse; when it empties it calls `_board.declare_game_over()` rather than ending the run itself, so every end-of-run path stays in one place.
 - **Puzzle** — `Modes.puzzle_layout(level)` returns a starting board, seeded from the level so board N is always identical. Two invariants it must keep: no row or column may start full (it would clear the instant it is drawn), and the board must leave room for the opening deal. The objective is lines-cleared, tracked in `game.gd._puzzle_cleared`.
@@ -191,6 +191,7 @@ Powers no longer appear in the tray. They are unlocked by levelling, equipped to
 - **`can_target()` gates power placement**, not `can_place()`. Only destructive powers may be aimed at an occupied cell; `MORPH` and `FIT` both assign into `_grid` at the target, so relaxing them would silently recolour a block.
 - **In `_fire_power`, read the level before spending and spend after `place()` returns.** Spending records a use and can level the power up mid-shot, and a drop the board refuses must not bill the player.
 - **`_check_game_over()` replaces the bare `has_any_move` test.** A dead tray does not end the run while a charged power remains. `board.gd` knows nothing about this; `game.gd` decides when to call `declare_game_over`.
+- The menu's first entry reads **New Game** or **Continue** depending on `Progress.has_progress()`. Both do the same thing — progression always carries over — the label only stops "New Game" reading like a reset.
 - Powers are disabled in Puzzle mode — a seeded board plus a levelled bomb is not the same puzzle for two players.
 
 ### Layout conventions

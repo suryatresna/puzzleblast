@@ -21,6 +21,7 @@ func _ready() -> void:
 	Progress.level_changed.connect(func(_l: int, _p: int) -> void: _rebuild())
 	Progress.loadout_changed.connect(_rebuild)
 	Progress.power_level_changed.connect(func(_p: int, _l: int) -> void: _rebuild())
+	%ResetButton.pressed.connect(_confirm_reset)
 	_rebuild()
 
 
@@ -44,6 +45,7 @@ func _rebuild() -> void:
 		%Hint.text = "Tap a power to equip it. %d of %d slots." % [
 			_equipped_count(), Progress.loadout_size()]
 	%Hint.visible = not %Hint.text.is_empty()
+	%ResetButton.visible = Progress.has_progress()
 
 	for child in %Powers.get_children():
 		child.queue_free()
@@ -141,6 +143,24 @@ func _tapped(power: int) -> void:
 		# Every slot is taken; replace the first so a tap is never inert.
 		free = 0
 	Progress.equip(free, power)
+
+
+## Two taps to wipe, matching the leaderboard's Clear scores. Everything goes:
+## level, powers, their levels, charge and unlocked themes -- so it asks twice
+## and says so plainly rather than hiding behind the word "reset".
+func _confirm_reset() -> void:
+	if %ResetButton.text.begins_with("Reset"):
+		%ResetButton.text = "Tap again to erase all progress"
+		await get_tree().create_timer(3.0).timeout
+		if is_instance_valid(self) and is_inside_tree():
+			%ResetButton.text = "Reset level"
+		return
+	Progress.wipe()
+	# An unlocked theme may have just been revoked; fall back to the shipped one.
+	if not Progress.is_theme_unlocked(Themes.current()):
+		Themes.set_current(Themes.ACTIVE)
+	%ResetButton.text = "Reset level"
+	_rebuild()
 
 
 static func _commas(n: int) -> String:

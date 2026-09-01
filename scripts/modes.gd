@@ -24,7 +24,10 @@ const Blocks := preload("res://scripts/blocks.gd")
 enum Id { PALETTE, SPRINT, PUZZLE, BIG_PALETTE }
 
 ## Cells per side, per mode. The board snaps its cell size to a whole multiple
-## of the 32px sprite, so 8 plays at 128px cells and 12 at 64px.
+## of the 32px sprite, so 8 plays at 128px cells and 12 at 87px.
+##
+## PALETTE is the exception: it starts at 8 and grows to 12 once the player
+## reaches `Progress.BIG_BOARD_LEVEL`, so the endless mode opens up as they do.
 const GRIDS := {
 	Id.PALETTE: 8,
 	Id.SPRINT: 8,
@@ -98,8 +101,20 @@ func ids() -> Array:
 
 
 ## Cells per side for a mode.
+##
+## Reads `Progress` at call time rather than caching: this runs when a run
+## starts, long after every autoload is up, and the level can change between
+## runs. Guarded anyway, because `Modes` is registered before `Progress`.
 func grid_of(id: int = current) -> int:
-	return int(GRIDS.get(id, 8))
+	var base: int = int(GRIDS.get(id, 8))
+	if id != Id.PALETTE:
+		return base
+	var progress: Node = get_node_or_null("/root/Progress")
+	if progress == null:
+		return base
+	if progress.level() >= progress.BIG_BOARD_LEVEL:
+		return int(GRIDS[Id.BIG_PALETTE])
+	return base
 
 
 func set_current(id: int) -> void:

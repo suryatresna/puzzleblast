@@ -58,6 +58,10 @@ const REWARDS := {
 
 # --- powers ------------------------------------------------------------------
 
+## The level at which the endless board grows from 8x8 to 12x12. The player
+## has to have earned the room before they get it.
+const BIG_BOARD_LEVEL := 25
+
 const LOADOUT_SIZE := 3
 const MAX_POWER_LEVEL := 5
 
@@ -125,6 +129,13 @@ func total_score() -> int:
 func level() -> int:
 	_ensure_loaded()
 	return _level
+
+
+## Whether the player has anything to carry over. Drives the menu's
+## New Game / Continue label.
+func has_progress() -> bool:
+	_ensure_loaded()
+	return _total_score > 0 or _level > 1
 
 
 func pending_unlocks() -> int:
