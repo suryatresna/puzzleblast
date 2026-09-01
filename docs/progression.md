@@ -26,7 +26,7 @@ Worth knowing: this is a **retention loop, not a pacing fix**. At 10 runs a day 
 
 ## Game modes
 
-Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
+Three, defined in `Modes.DEFS`; the picker (`scenes/mode_select.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
 
 - **Palette** — the endless run. Its grid is **level-driven**: 8x8 until `Progress.BIG_BOARD_LEVEL` (25), then 12x12. `Modes.grid_of()` reads `Progress` at call time, guarded, because `Modes` is registered first.
 - **Big Palette** — the same rules on a 12x12 grid. The board's grid is a variable (`Board.grid`, set from `Modes.GRIDS` in `_setup_mode`), not a constant; `Board.SIZE` is only the default now.

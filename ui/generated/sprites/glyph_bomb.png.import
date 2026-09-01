@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://pgkiu8s0hid3"
-path="res://.godot/imported/glyph_thunder.png-7fcd26c26ad50fc68c61697deedf8c03.ctex"
+uid="uid://dykoe7rwymum1"
+path="res://.godot/imported/glyph_bomb.png-3bb69c6ded0d7ed0c4d0245492c47434.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_thunder.png"
-dest_files=["res://.godot/imported/glyph_thunder.png-7fcd26c26ad50fc68c61697deedf8c03.ctex"]
+source_file="res://ui/generated/sprites/glyph_bomb.png"
+dest_files=["res://.godot/imported/glyph_bomb.png-3bb69c6ded0d7ed0c4d0245492c47434.ctex"]
 
 [params]
 

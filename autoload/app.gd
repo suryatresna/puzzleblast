@@ -12,7 +12,7 @@ const SCENE_SETTINGS := "res://scenes/settings.tscn"
 const SCENE_ABOUT := "res://scenes/about.tscn"
 const SCENE_LEADERBOARD := "res://scenes/leaderboard.tscn"
 const SCENE_GAME := "res://scenes/game.tscn"
-const SCENE_MODES := "res://scenes/modes.tscn"
+const SCENE_MODES := "res://scenes/mode_select.tscn"
 const SCENE_PROFILE := "res://scenes/profile.tscn"
 
 const FADE_DURATION := 0.22

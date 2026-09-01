@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bj0ehxsfxyecy"
-path="res://.godot/imported/socket.png-bb0b46992ff2aa1928ddd4176ddfe275.ctex"
+uid="uid://dvw2dbvgug3jq"
+path="res://.godot/imported/glyph_rewind.png-0e21fccec29405a0b04160146206a097.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/socket.png"
-dest_files=["res://.godot/imported/socket.png-bb0b46992ff2aa1928ddd4176ddfe275.ctex"]
+source_file="res://ui/generated/sprites/glyph_rewind.png"
+dest_files=["res://.godot/imported/glyph_rewind.png-0e21fccec29405a0b04160146206a097.ctex"]
 
 [params]
 

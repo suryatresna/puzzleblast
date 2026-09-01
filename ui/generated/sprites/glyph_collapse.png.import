@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cshd1361xq0of"
-path="res://.godot/imported/glyph_diagonal.png-6e0810d7cc9a215ad9d7e51725cad82e.ctex"
+uid="uid://st4e0l2sh07f"
+path="res://.godot/imported/glyph_collapse.png-7dd1c7b3a8a4ba69552f492b0493e00e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_diagonal.png"
-dest_files=["res://.godot/imported/glyph_diagonal.png-6e0810d7cc9a215ad9d7e51725cad82e.ctex"]
+source_file="res://ui/generated/sprites/glyph_collapse.png"
+dest_files=["res://.godot/imported/glyph_collapse.png-7dd1c7b3a8a4ba69552f492b0493e00e.ctex"]
 
 [params]
 

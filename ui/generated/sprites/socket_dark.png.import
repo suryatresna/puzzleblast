@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dtqbwxysfhpss"
-path="res://.godot/imported/panel.png-788de38f011ffdb217e4c648db31467a.ctex"
+uid="uid://dt1ywvi7d5c3"
+path="res://.godot/imported/socket_dark.png-a01d4d2ca430f74a98da732392b55364.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/panel.png"
-dest_files=["res://.godot/imported/panel.png-788de38f011ffdb217e4c648db31467a.ctex"]
+source_file="res://ui/generated/sprites/socket_dark.png"
+dest_files=["res://.godot/imported/socket_dark.png-a01d4d2ca430f74a98da732392b55364.ctex"]
 
 [params]
 

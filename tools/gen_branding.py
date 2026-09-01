@@ -22,8 +22,14 @@ import os
 from PIL import Image
 
 HERE = os.path.dirname(__file__)
-TILE = os.path.join(HERE, "..", "ui", "pixel", "tile_dark.png")
-OUT = os.path.join(HERE, "..", "ui")
+ROOT = os.path.join(HERE, "..")
+# Every output is derived from ROOT, never from another output directory. The
+# store icons used to be written as a join against OUT ("../assets/icons/..."),
+# so moving OUT silently redirected them -- and save() makedirs, so it would
+# have succeeded and quietly stopped regenerating the App Store icon.
+TILE = os.path.join(ROOT, "ui", "generated", "sprites", "tile_dark.png")
+OUT = os.path.join(ROOT, "ui", "generated")
+ICONS = os.path.join(ROOT, "assets", "icons")
 
 # Pixel Dark tile tints: 0 blue, 1 olive, 2 rust, 3 ochre
 TINTS = ["#8fa9a1", "#a8842f", "#d0603a", "#e8bc61"]
@@ -75,8 +81,8 @@ def build_icon(side):
     return icon
 
 
-def save(img, name):
-    path = os.path.abspath(os.path.join(OUT, name))
+def save(img, name, absolute=False):
+    path = os.path.abspath(name if absolute else os.path.join(OUT, name))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     img.save(path)
     print("  %-30s %4dx%-4d %s %5.1f KB"
@@ -102,8 +108,8 @@ if __name__ == "__main__":
         if side == 1024:
             # No alpha: the App Store rejects an icon that has the channel at
             # all, opaque or not.
-            save(icon.convert("RGB"), os.path.join("..", "assets", "icons",
-                                                   "icon_1024.png"))
+            save(icon.convert("RGB"), os.path.join(ICONS, "icon_1024.png"),
+                 absolute=True)
         else:
-            save(icon, os.path.join("..", "assets", "icons", "icon_512.png"))
+            save(icon, os.path.join(ICONS, "icon_512.png"), absolute=True)
             save(icon, "icon.png")

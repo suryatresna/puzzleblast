@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dt1ywvi7d5c3"
-path="res://.godot/imported/socket_dark.png-1b7a238a757ea836b7b38b6b0e59279e.ctex"
+uid="uid://cshd1361xq0of"
+path="res://.godot/imported/glyph_diagonal.png-4a374e961b311547d69e1120163a7b62.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/socket_dark.png"
-dest_files=["res://.godot/imported/socket_dark.png-1b7a238a757ea836b7b38b6b0e59279e.ctex"]
+source_file="res://ui/generated/sprites/glyph_diagonal.png"
+dest_files=["res://.godot/imported/glyph_diagonal.png-4a374e961b311547d69e1120163a7b62.ctex"]
 
 [params]
 

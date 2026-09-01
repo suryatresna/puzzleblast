@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b3j35jgt6axjj"
-path="res://.godot/imported/tile.png-dc07904757d2bc816a1f1283aa5e95a2.ctex"
+uid="uid://cpy2y56wf4veu"
+path="res://.godot/imported/glyph_laser.png-7ef71718e0d51579d404d664e7fdd873.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/tile.png"
-dest_files=["res://.godot/imported/tile.png-dc07904757d2bc816a1f1283aa5e95a2.ctex"]
+source_file="res://ui/generated/sprites/glyph_laser.png"
+dest_files=["res://.godot/imported/glyph_laser.png-7ef71718e0d51579d404d664e7fdd873.ctex"]
 
 [params]
 

@@ -33,7 +33,7 @@ const DEFAULT_ID := ACTIVE
 ## Baking the upscale keeps the pixel grid exact and keeps nine-patch margins
 ## in proportion -- StyleBoxTexture measures those in texture pixels and does
 ## not scale them when drawing.
-const SPRITE_DIR := "res://ui/pixel/"
+const SPRITE_DIR := "res://ui/generated/sprites/"
 
 const DEFS := {
 	Id.CLASSIC: {
@@ -82,7 +82,7 @@ const DEFS := {
 		"highlight": Color("806124"),
 		"danger": Color("963e20"),
 		"outline": Color("f6ebd5", 0.92),
-		"ui_theme": "res://ui/theme_pixel.tres",
+		"ui_theme": "res://ui/generated/theme_pixel.tres",
 		"pixel": true,
 		"tile": "tile", "socket_tex": "socket",
 		# Tiles are tinted with the LIGHT stop of each ramp: the stored sprite
@@ -130,7 +130,7 @@ const DEFS := {
 		"highlight": Color("e8bc61"),
 		"danger": Color("d0603a"),
 		"outline": Color("0f0c0a", 0.95),
-		"ui_theme": "res://ui/theme_pixel_dark.tres",
+		"ui_theme": "res://ui/generated/theme_pixel_dark.tres",
 		"pixel": true,
 		"tile": "tile_dark", "socket_tex": "socket_dark",
 		"blocks": [

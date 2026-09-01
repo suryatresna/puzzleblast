@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://crog2ki0wybda"
-path="res://.godot/imported/glyph_shuffle.png-160f899087a8f89d354c977354a8dded.ctex"
+uid="uid://b3j35jgt6axjj"
+path="res://.godot/imported/tile.png-2dbc66e8bc4cef97bef0c7fdc7f37808.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_shuffle.png"
-dest_files=["res://.godot/imported/glyph_shuffle.png-160f899087a8f89d354c977354a8dded.ctex"]
+source_file="res://ui/generated/sprites/tile.png"
+dest_files=["res://.godot/imported/tile.png-2dbc66e8bc4cef97bef0c7fdc7f37808.ctex"]
 
 [params]
 

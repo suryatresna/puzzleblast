@@ -16,8 +16,8 @@ config/version="0.1.0"
 run/main_scene="res://scenes/splash.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0.09, 0.071, 0.059, 1)
-boot_splash/image="res://ui/boot_splash.png"
-config/icon="res://ui/icon.png"
+boot_splash/image="res://ui/generated/boot_splash.png"
+config/icon="res://ui/generated/icon.png"
 
 [autoload]
 

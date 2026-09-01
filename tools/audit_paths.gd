@@ -73,11 +73,11 @@ func _themes() -> void:
 		_ok(String(Themes.value("ui_theme", "")), "Themes.DEFS[%d].ui_theme" % id)
 		for power: int in Blocks.ALL_POWERS:
 			if Themes.GLYPHS.has(power):
-				_ok("res://ui/pixel/%s.png" % Themes.GLYPHS[power],
+				_ok("res://ui/generated/sprites/%s.png" % Themes.GLYPHS[power],
 					"glyph for %s" % Blocks.power_name(power))
 		for key in ["tile", "tile_dark", "socket", "socket_dark", "plate",
 				"panel", "panel_dark"]:
-			_ok("res://ui/pixel/%s.png" % key, "sprite " + key)
+			_ok("res://ui/generated/sprites/%s.png" % key, "sprite " + key)
 	Themes.peek(Themes.ACTIVE)
 
 

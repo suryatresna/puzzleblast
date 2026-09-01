@@ -7,8 +7,8 @@ extends Node
 ## to get subtly wrong, so the resources are generated instead. Re-run this
 ## after changing a palette in `Themes.DEFS` or regenerating the sprites.
 
-const PLATE := "res://ui/pixel/plate.png"
-const SPRITES := "res://ui/pixel/"
+const PLATE := "res://ui/generated/sprites/plate.png"
+const SPRITES := "res://ui/generated/sprites/"
 
 ## Nine-patch inset: 12 logical px on a 48px plate, stored at 4x.
 const MARGIN := 48.0
@@ -23,14 +23,14 @@ const BODY := "res://ui/fonts/pixelify.ttf"
 const SPECS := {
 	# Buttons are the ochre ramp #E8BC61 -> #D6A549 in BOTH modes; the plate
 	# sprite carries the ramp, so these name the top stop only.
-	"res://ui/theme_pixel.tres": {
+	"res://ui/generated/theme_pixel.tres": {
 		"text": Color("4a3b2a"),
 		"btn": Color("e8bc61"), "btn_hover": Color("f2d989"),
 		"btn_press": Color("cc9a3f"), "btn_off": Color("d8cdb4"),
 		"btn_text": Color("4a3b2a"),
 		"sep": Color(0.29, 0.231, 0.165, 0.35),
 	},
-	"res://ui/theme_pixel_dark.tres": {
+	"res://ui/generated/theme_pixel_dark.tres": {
 		"text": Color("f0e2c6"),
 		"btn": Color("e8bc61"), "btn_hover": Color("f2d989"),
 		"btn_press": Color("cc9a3f"), "btn_off": Color("4a3f33"),

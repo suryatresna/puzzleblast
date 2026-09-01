@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cpy2y56wf4veu"
-path="res://.godot/imported/glyph_laser.png-4d19844d09bd12ec6c983b8e6a46e9d3.ctex"
+uid="uid://pgkiu8s0hid3"
+path="res://.godot/imported/glyph_thunder.png-065f4813b7e0afe825bc78b8fc69db7e.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_laser.png"
-dest_files=["res://.godot/imported/glyph_laser.png-4d19844d09bd12ec6c983b8e6a46e9d3.ctex"]
+source_file="res://ui/generated/sprites/glyph_thunder.png"
+dest_files=["res://.godot/imported/glyph_thunder.png-065f4813b7e0afe825bc78b8fc69db7e.ctex"]
 
 [params]
 

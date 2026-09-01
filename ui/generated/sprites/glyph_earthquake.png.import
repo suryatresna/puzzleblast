@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dv11ub8epqkg7"
-path="res://.godot/imported/glyph_blackhole.png-a2b4d78812159355e9c87d284b8e7018.ctex"
+uid="uid://b1v3006ac1pw8"
+path="res://.godot/imported/glyph_earthquake.png-958130952b34d8cbcfa465213a1fad95.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_blackhole.png"
-dest_files=["res://.godot/imported/glyph_blackhole.png-a2b4d78812159355e9c87d284b8e7018.ctex"]
+source_file="res://ui/generated/sprites/glyph_earthquake.png"
+dest_files=["res://.godot/imported/glyph_earthquake.png-958130952b34d8cbcfa465213a1fad95.ctex"]
 
 [params]
 

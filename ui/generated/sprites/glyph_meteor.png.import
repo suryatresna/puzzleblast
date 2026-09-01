@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dykoe7rwymum1"
-path="res://.godot/imported/glyph_bomb.png-a118bae4a30f18517e9794e17ccf8380.ctex"
+uid="uid://q2lai3gmr7r1"
+path="res://.godot/imported/glyph_meteor.png-9a657aa6da803aa514ffb6563d86c4ce.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_bomb.png"
-dest_files=["res://.godot/imported/glyph_bomb.png-a118bae4a30f18517e9794e17ccf8380.ctex"]
+source_file="res://ui/generated/sprites/glyph_meteor.png"
+dest_files=["res://.godot/imported/glyph_meteor.png-9a657aa6da803aa514ffb6563d86c4ce.ctex"]
 
 [params]
 

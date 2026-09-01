@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Script" path="res://scenes/modes.gd" id="1_script"]
+[ext_resource type="Script" path="res://scenes/mode_select.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
 [ext_resource type="Script" path="res://ui/widgets/safe_area_margin.gd" id="3_safe"]
 

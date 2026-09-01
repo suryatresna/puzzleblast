@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b1v3006ac1pw8"
-path="res://.godot/imported/glyph_earthquake.png-c224366428c38a5702fe787dbcc8dab8.ctex"
+uid="uid://2pik2gt6cwdy"
+path="res://.godot/imported/boot_splash.png-41aa8241306be767794ad7098452099a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/glyph_earthquake.png"
-dest_files=["res://.godot/imported/glyph_earthquake.png-c224366428c38a5702fe787dbcc8dab8.ctex"]
+source_file="res://ui/generated/boot_splash.png"
+dest_files=["res://.godot/imported/boot_splash.png-41aa8241306be767794ad7098452099a.ctex"]
 
 [params]
 

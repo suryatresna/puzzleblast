@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bm3d2572n22c1"
-path="res://.godot/imported/panel_dark.png-06055863a5d9f509161c817cabeeb815.ctex"
+uid="uid://bqb5fixuokboa"
+path="res://.godot/imported/glyph_tsunami.png-7628b487d09d36045a57938aa7a344c6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ui/pixel/panel_dark.png"
-dest_files=["res://.godot/imported/panel_dark.png-06055863a5d9f509161c817cabeeb815.ctex"]
+source_file="res://ui/generated/sprites/glyph_tsunami.png"
+dest_files=["res://.godot/imported/glyph_tsunami.png-7628b487d09d36045a57938aa7a344c6.ctex"]
 
 [params]
 

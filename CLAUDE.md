@@ -91,7 +91,7 @@ So after moving any file, "it still runs" proves nothing. Run the audit.
 - Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
 - The leaderboard tags every row with its mode and filters by it.
 - `scenes/profile.tscn` shows level, XP, streak and the power **skill tree** (in a `ScrollContainer`, so it grows without a layout change), and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
-- `scenes/modes.tscn` covers Palette, Big Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
+- `scenes/mode_select.tscn` covers Palette, Big Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
 - `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. The design's RESTORE PURCHASES is not built — there is no IAP.
 - Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.
 - Music files must **not** loop — the playlist advances on `finished`, so a looping track would never hand over. `Audio._set_loop` clears the flag on every track it plays. If you ever do need a looping WAV, setting `loop_mode` without also setting `loop_end` yields a zero-length loop: `playing` stays true, the position never advances, and the track is silent. `--headless` and Movie Maker both use the Dummy audio driver, so audio bugs only surface in a real windowed run.

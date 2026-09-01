@@ -27,7 +27,7 @@ Run:  python3 tools/gen_pixel_sprites.py
 import math, os
 from PIL import Image, ImageDraw
 
-OUT = os.path.join(os.path.dirname(__file__), "..", "ui", "pixel")
+OUT = os.path.join(os.path.dirname(__file__), "..", "ui", "generated", "sprites")
 SCALE = 4          # 270x480 design -> 1080x1920 runtime
 TILE = 32          # logical tile size
 PLATE = 48         # logical nine-patch plate size
