@@ -9,8 +9,8 @@ extends MenuScreen
 ## `Themes.ACTIVE`), not a user setting.
 
 
-const ToggleSwitch := preload("res://scripts/toggle_switch.gd")
-const SegmentSlider := preload("res://scripts/segment_slider.gd")
+const ToggleSwitch := preload("res://ui/widgets/toggle_switch.gd")
+const SegmentSlider := preload("res://ui/widgets/segment_slider.gd")
 
 ## Label sizes are the design's, doubled twice: the mockups are 2x of the
 ## 270x480 screen and the game runs at 4x.

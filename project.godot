@@ -21,13 +21,13 @@ config/icon="res://ui/icon.png"
 
 [autoload]
 
-App="*res://scripts/app.gd"
-Scores="*res://scripts/scores.gd"
-Themes="*res://scripts/themes.gd"
-Audio="*res://scripts/audio.gd"
-Modes="*res://scripts/modes.gd"
-GameServices="*res://scripts/game_services.gd"
-Progress="*res://scripts/progress.gd"
+App="*res://autoload/app.gd"
+Scores="*res://autoload/scores.gd"
+Themes="*res://autoload/themes.gd"
+Audio="*res://autoload/audio.gd"
+Modes="*res://autoload/modes.gd"
+GameServices="*res://autoload/game_services.gd"
+Progress="*res://autoload/progress.gd"
 
 [display]
 

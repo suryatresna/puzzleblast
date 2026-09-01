@@ -16,7 +16,7 @@ extends Node
 ## concurrent settings save. `scores.cfg` sets the precedent that a
 ## frequently-mutated domain gets its own file.
 
-const ThemesScript := preload("res://scripts/themes.gd")
+const ThemesScript := preload("res://autoload/themes.gd")
 
 const SAVE_PATH := "user://progress.cfg"
 

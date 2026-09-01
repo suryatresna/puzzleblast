@@ -5,7 +5,7 @@ extends MenuScreen
 ## a mode is a table entry. Tapping one sets it as current and starts a run --
 ## the picker is the only place `Modes.current` is written.
 
-const ModeIcon := preload("res://scripts/mode_icon.gd")
+const ModeIcon := preload("res://ui/widgets/mode_icon.gd")
 
 const TITLE_FONT := 38
 const BLURB_FONT := 30

@@ -7,7 +7,7 @@ extends Node
 ## The mode enum is reached through the script rather than the `Modes` autoload
 ## because Scores is declared first and would otherwise read it before it is
 ## ready.
-const ModesScript := preload("res://scripts/modes.gd")
+const ModesScript := preload("res://autoload/modes.gd")
 
 const SAVE_PATH := "user://scores.cfg"
 ## Kept PER MODE, so filtering the board never leaves a mode with one row.

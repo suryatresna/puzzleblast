@@ -2,12 +2,12 @@
 
 [ext_resource type="Script" uid="uid://vnpywtiyxh2l" path="res://scenes/game.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
-[ext_resource type="Script" uid="uid://bd2hba6lqsiyr" path="res://scripts/safe_area_margin.gd" id="3_safe"]
-[ext_resource type="Script" uid="uid://b5dxdaixicfo0" path="res://scripts/board.gd" id="4_board"]
-[ext_resource type="Script" uid="uid://b52ysk86xobx7" path="res://scripts/effects.gd" id="5_fx"]
-[ext_resource type="Script" uid="uid://3p5h12mv8h6x" path="res://scripts/piece_view.gd" id="6_piece"]
-[ext_resource type="Script" uid="uid://cc6yn4r3ql0in" path="res://scripts/score_counter.gd" id="7_counter"]
-[ext_resource type="Script" path="res://scripts/fuse_bar.gd" id="9_fuse"]
+[ext_resource type="Script" uid="uid://bd2hba6lqsiyr" path="res://ui/widgets/safe_area_margin.gd" id="3_safe"]
+[ext_resource type="Script" uid="uid://b5dxdaixicfo0" path="res://rules/board.gd" id="4_board"]
+[ext_resource type="Script" uid="uid://b52ysk86xobx7" path="res://ui/effects/effects.gd" id="5_fx"]
+[ext_resource type="Script" uid="uid://3p5h12mv8h6x" path="res://ui/widgets/piece_view.gd" id="6_piece"]
+[ext_resource type="Script" uid="uid://cc6yn4r3ql0in" path="res://ui/widgets/score_counter.gd" id="7_counter"]
+[ext_resource type="Script" path="res://ui/widgets/fuse_bar.gd" id="9_fuse"]
 
 [node name="Game" type="Control" unique_id=250239038]
 layout_mode = 3

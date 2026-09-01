@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://dcf04ay5hmv07" path="res://scenes/splash.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
 [ext_resource type="Texture2D" uid="uid://bdjdvnonlwiqr" path="res://ui/logo.svg" id="3_logo"]
-[ext_resource type="Script" uid="uid://beitxhmdrfvq2" path="res://scripts/logo_mark.gd" id="4_logomark"]
+[ext_resource type="Script" uid="uid://beitxhmdrfvq2" path="res://ui/widgets/logo_mark.gd" id="4_logomark"]
 
 [node name="Splash" type="Control" unique_id=1470136387]
 layout_mode = 3

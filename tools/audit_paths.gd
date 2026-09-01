@@ -16,7 +16,7 @@ extends Node
 ##
 ## Exits non-zero on the first missing path. Keep it green.
 
-const Blocks := preload("res://scripts/blocks.gd")
+const Blocks := preload("res://rules/blocks.gd")
 
 var _fails := 0
 var _checked := 0

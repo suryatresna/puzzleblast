@@ -13,7 +13,7 @@ extends MenuScreen
 ## One tap does the obvious thing for the card's state -- a locked power with an
 ## unlock banked gets unlocked, an owned one toggles in and out of the loadout.
 
-const PieceView := preload("res://scripts/piece_view.gd")
+const PieceView := preload("res://ui/widgets/piece_view.gd")
 
 const NAME_FONT := 32
 const BLURB_FONT := 26

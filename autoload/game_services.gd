@@ -14,7 +14,7 @@ extends Node
 
 signal authentication_changed(ok: bool)
 
-const ModesScript := preload("res://scripts/modes.gd")
+const ModesScript := preload("res://autoload/modes.gd")
 
 const SINGLETON := "GameCenter"
 

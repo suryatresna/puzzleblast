@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://scenes/main_menu.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
-[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
-[ext_resource type="Script" path="res://scripts/logo_mark.gd" id="4_mark"]
+[ext_resource type="Script" path="res://ui/widgets/safe_area_margin.gd" id="3_safe"]
+[ext_resource type="Script" path="res://ui/widgets/logo_mark.gd" id="4_mark"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
