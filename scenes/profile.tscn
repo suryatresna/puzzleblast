@@ -1,0 +1,133 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scenes/profile.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://ui/background.tscn" id="2_bg"]
+[ext_resource type="Script" path="res://scripts/safe_area_margin.gd" id="3_safe"]
+
+[node name="Profile" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_script")
+
+[node name="Background" parent="." instance=ExtResource("2_bg")]
+layout_mode = 1
+
+[node name="SafeArea" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_safe")
+base_margin = 56
+
+[node name="Layout" type="VBoxContainer" parent="SafeArea"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 24
+
+[node name="Header" type="HBoxContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 28
+
+[node name="BackButton" type="Button" parent="SafeArea/Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"IconButton"
+theme_override_font_sizes/font_size = 40
+text = "<"
+
+[node name="Title" type="Label" parent="SafeArea/Layout/Header"]
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 48
+text = "PROFILE"
+
+[node name="LevelCard" type="PanelContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"CardPanel"
+
+[node name="V" type="VBoxContainer" parent="SafeArea/Layout/LevelCard"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="LevelRow" type="HBoxContainer" parent="SafeArea/Layout/LevelCard/V"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="LevelLabel" type="Label" parent="SafeArea/Layout/LevelCard/V/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 44
+text = "LEVEL 1"
+
+[node name="XpLabel" type="Label" parent="SafeArea/Layout/LevelCard/V/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 26
+vertical_alignment = 2
+text = ""
+
+[node name="XpTrack" type="Panel" parent="SafeArea/Layout/LevelCard/V"]
+clip_children = 1
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"BarTrack"
+
+[node name="XpFill" type="Panel" parent="SafeArea/Layout/LevelCard/V/XpTrack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"BarFill"
+
+[node name="Stats" type="Label" parent="SafeArea/Layout/LevelCard/V"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 26
+text = ""
+
+[node name="Hint" type="Label" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"AccentLabel"
+theme_override_font_sizes/font_size = 28
+autowrap_mode = 3
+text = ""
+
+[node name="Scroll" type="ScrollContainer" parent="SafeArea/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Powers" type="VBoxContainer" parent="SafeArea/Layout/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 18

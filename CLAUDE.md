@@ -93,6 +93,7 @@ Frames are named `f00000000.png`. The game auto-pauses on focus loss (see `_noti
 - **`Themes`** (`scripts/themes.gd`) — the theme registry. See **Theming** below.
 - **`Modes`** (`scripts/modes.gd`) — game modes. `PALETTE` is the endless game the project has always had; `SPRINT` runs a 60-second fuse; `PUZZLE` deals a seeded starting board with a lines-to-clear objective. `current` must be set **before** routing to the play screen — `game.gd` reads it once in `_setup_mode()`, which `_restart()` calls. Owns the `[modes]` section of `user://settings.cfg`.
 - **`GameServices`** (`scripts/game_services.gd`) — Apple Game Center: authenticate on launch, greet the signed-in player on the welcome page, submit every finished run, open Apple's leaderboard UI. Godot 4 has **no built-in Game Center module** (it moved out of the engine after 3.x), so this binds at runtime to the `GameCenter` singleton from godot-ios-plugins. Guarded twice — iOS *and* singleton present — so it is a silent no-op in the editor, on desktop, on Android, and on an iOS build without the plugin. The local `Scores` table stays the source of truth; nothing may depend on Game Center succeeding. Setup that cannot be done from this repo is in `docs/gamecenter.md`.
+- **`Progress`** (`scripts/progress.gd`) — player progression: level from cumulative score, power unlocks and levels, the 3-power loadout, charge, unlocked themes, daily streak. Owns `user://progress.cfg` outright — charge changes a dozen times a run and every write to the shared `settings.cfg` rewrites all of it. The level is re-derived from the score on load, never trusted from disk.
 - **`Audio`** (`scripts/audio.gd`) — a shuffled music playlist and sound effects. Two beds, picked per screen by `App._playlist_for()`: a fixed menu rotation (4 plays per track) and a shuffled in-game list (5 plays per track). Tracks are scanned from `assets/audio/music/` at runtime and named in `snake_case`; `game_over` is held back and played when a run ends. Effect streams are cached, music streams are not — the library is tens of megabytes and only one track plays at a time. Owns the `[audio]` section of `user://settings.cfg`. Effects resolve by name against `.wav`/`.ogg`/`.mp3`, so assets can be replaced without code changes — see `assets/audio/README.md`. It starts its own music in `_ready()` rather than being started by `App`, because autoloads run in declaration order and `App` is first.
 
 ### Game separation of concerns
@@ -133,7 +134,7 @@ Pointer handling lives in `_input()` on `game.gd`, not `_unhandled_input()`, bec
 
 ### Theming
 
-Three themes are defined — **Classic** (the original indigo look), **Pixel Warm** and **Pixel Dark** — but the active one is a **build-time constant**, `Themes.ACTIVE`, currently `PIXEL_DARK`. There is deliberately no user-facing switch and the choice is not persisted; to re-theme the game, change that one line. `Themes.set_current()` exists only for the theme generator and tests.
+Three themes are defined — **Classic**, **Pixel Warm** and **Pixel Dark**. `Themes.ACTIVE` (`PIXEL_DARK`) is what a fresh install ships with and the only one available until `Progress` unlocks more by level; the settings screen offers whatever `Progress.unlocked_themes()` returns. The choice **is** persisted. Use `Themes.peek()` rather than `set_current()` anywhere that walks every palette — the theme generator and tests — so it does not leave the player on the last one touched.
 
 `scripts/themes.gd` is the single source of truth. A theme is one entry in `DEFS` — palette, semantic text colours, a UI theme resource, and for the pixel themes a set of sprites. **Adding a theme should need no code outside that table.**
 
@@ -180,6 +181,18 @@ Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its card
 
 The design's fourth mode (Daily) and the `TILE SET` row are not built — Daily is gated on a level system that does not exist, and the tile set is fixed by `Themes.ACTIVE`.
 
+### Powers and progression
+
+Powers no longer appear in the tray. They are unlocked by levelling, equipped to a 3-slot loadout on the profile screen, shown in a strip above the tray, paid for with charge earned from combos, and dragged onto the board like any other piece.
+
+- **`board.gd` owns what a power does**, via the level tables next to the scoring constants (`BOMB_BY_LEVEL` and friends). `Progress` owns cost and XP, never geometry — that keeps `board.gd` testable with a bare `Board` and an int, with no autoload to register.
+- **Level 2 reproduces each power's pre-progression behaviour.** A maxed power beats what shipped; a fresh one is weaker.
+- **Each bomb level must be a strict superset of the last.** That is not automatic: on an 8×8 board a 7×7 blast covers 49 cells against half the board's 32, so "half the board" cannot cap the ramp.
+- **`can_target()` gates power placement**, not `can_place()`. Only destructive powers may be aimed at an occupied cell; `MORPH` and `FIT` both assign into `_grid` at the target, so relaxing them would silently recolour a block.
+- **In `_fire_power`, read the level before spending and spend after `place()` returns.** Spending records a use and can level the power up mid-shot, and a drop the board refuses must not bill the player.
+- **`_check_game_over()` replaces the bare `has_any_move` test.** A dead tray does not end the run while a charged power remains. `board.gd` knows nothing about this; `game.gd` decides when to call `declare_game_over`.
+- Powers are disabled in Puzzle mode — a seeded board plus a levelled bomb is not the same puzzle for two players.
+
 ### Layout conventions
 
 Screens follow: `Background` instance → `SafeArea` (`MarginContainer` + `safe_area_margin.gd`) → `Layout` VBox. Containers and decorative nodes are set `mouse_filter = 2` so clicks reach the script. Buttons and panels get their look from `ui/theme.tres`; avoid per-node style overrides unless a node genuinely differs.
@@ -196,6 +209,7 @@ Two layout traps seen in this repo:
 
 - Game Center is code-complete but **not usable until the iOS plugin is installed and App Store Connect leaderboards exist** — see `docs/gamecenter.md`. Leaderboard IDs live only in `GameServices.LEADERBOARDS`.
 - The leaderboard tags every row with its mode and filters by it; difficulty level is no longer recorded or shown anywhere.
+- `scenes/profile.tscn` shows level, XP, streak and the five powers, and is where the loadout is chosen — deliberately a pre-run decision, so `game.gd` never grows a second modal input state.
 - `scenes/modes.tscn` covers Palette, Sprint and Puzzle. Daily and the tile-set row from the design are not built.
 - `scenes/settings.tscn` follows the design's card-row layout: music, sound, music volume, grid lines, haptics. Difficulty is deliberately absent — it follows the score during a run, so there is nothing to set. The design's RESTORE PURCHASES is not built — there is no IAP.
 - Effects are still placeholders from `tools/gen_audio.py`. Music is by Abstraction (https://abstractionmusic.com/) and is credited on the About page — that credit is a licence obligation, so do not remove it. Confetti is silent.

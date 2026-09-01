@@ -188,7 +188,7 @@ func _panels(t: Theme, id: int) -> void:
 
 func _variations(t: Theme, id: int) -> void:
 	var was := Themes.current()
-	Themes.set_current(id)
+	Themes.peek(id)
 	for name: String in VARIATIONS:
 		t.set_type_variation(name, "Label")
 		t.set_color("font_color", name, Themes.text_color(VARIATIONS[name]))
@@ -204,7 +204,7 @@ func _variations(t: Theme, id: int) -> void:
 	t.set_constant("shadow_outline_size", "WordmarkLabel", 0)
 	t.set_constant("line_spacing", "WordmarkLabel", -14)
 
-	Themes.set_current(was)
+	Themes.peek(was)
 
 
 func _plate(tex_path: String, tint: Color) -> StyleBoxTexture:

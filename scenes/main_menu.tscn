@@ -114,6 +114,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Modes"
 
+[node name="ProfileButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Profile"
+
 [node name="LeaderboardButton" type="Button" parent="SafeArea/Layout/MenuCenter/Menu"]
 unique_name_in_owner = true
 layout_mode = 2

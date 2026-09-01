@@ -8,10 +8,9 @@ extends Node
 ## Consumers read `Themes.data()` (or the typed helpers below) and rebuild
 ## whatever they cache when `theme_changed` fires.
 ##
-## The active theme is a BUILD-TIME choice -- see `ACTIVE` below. There is
-## deliberately no user-facing switch; to re-theme the game, change that one
-## line. `set_current()` exists for tooling (the theme generator walks every
-## palette) and for tests, not for the UI.
+## `ACTIVE` is the theme a fresh install ships with, and the only one available
+## until the player levels up. Others are unlocked by `Progress` and chosen from
+## the settings screen, so the choice IS persisted -- see `_save()`.
 ##
 ## To add a theme: append an entry to `DEFS`. Every consumer is data-driven, so
 ## a new palette needs no code changes beyond the table -- but a pixel theme
@@ -24,8 +23,7 @@ enum Id { CLASSIC, PIXEL_WARM, PIXEL_DARK }
 
 const SAVE_PATH := "user://settings.cfg"
 
-## The theme the game ships with. Change this line to re-theme; it is not a
-## user setting and is not persisted.
+## The theme a fresh install ships with, before anything is unlocked.
 const ACTIVE := Id.PIXEL_DARK
 
 const DEFAULT_ID := ACTIVE
@@ -189,10 +187,20 @@ func current() -> int:
 	return _id
 
 
-## Switches theme at runtime. FOR TOOLING AND TESTS ONLY -- the shipped theme
-## is fixed by `ACTIVE` and nothing in the UI calls this. The choice is not
-## persisted, so a relaunch always returns to `ACTIVE`.
+## Switches theme and remembers it. Callers are responsible for checking the
+## theme is unlocked; `settings.gd` only offers unlocked ones.
 func set_current(id: int) -> void:
+	_ensure_loaded()
+	if not DEFS.has(id) or id == _id:
+		return
+	_id = id
+	_save()
+	theme_changed.emit(_id)
+
+
+## Switches without persisting. For the theme generator and tests, which walk
+## every palette and must not leave the player on the last one they touched.
+func peek(id: int) -> void:
 	_ensure_loaded()
 	if not DEFS.has(id) or id == _id:
 		return
@@ -318,17 +326,15 @@ func _ensure_loaded() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return
-	# The theme is intentionally NOT read back from disk -- it is fixed by
-	# ACTIVE. Only the display preference below is a user setting.
+	var saved: int = int(cfg.get_value("game", "theme", ACTIVE))
+	if DEFS.has(saved):
+		_id = saved
 	_grid_lines = bool(cfg.get_value("game", "grid_lines", true))
 
 
 func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(SAVE_PATH)          # keep anything else already in the file
-	# Older builds let the player pick a theme. Drop that key so a saved
-	# choice cannot outlive the switch to a hardcoded theme.
-	if cfg.has_section_key("game", "theme"):
-		cfg.erase_section_key("game", "theme")
+	cfg.set_value("game", "theme", _id)
 	cfg.set_value("game", "grid_lines", _grid_lines)
 	cfg.save(SAVE_PATH)

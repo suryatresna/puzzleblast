@@ -13,6 +13,7 @@ func _ready() -> void:
 
 	%NewGameButton.pressed.connect(_new_game)
 	%ModesButton.pressed.connect(App.goto_scene.bind(App.SCENE_MODES))
+	%ProfileButton.pressed.connect(App.goto_scene.bind(App.SCENE_PROFILE))
 	%LeaderboardButton.pressed.connect(App.goto_scene.bind(App.SCENE_LEADERBOARD))
 	%SettingsButton.pressed.connect(App.goto_scene.bind(App.SCENE_SETTINGS))
 	%AboutButton.pressed.connect(App.goto_scene.bind(App.SCENE_ABOUT))

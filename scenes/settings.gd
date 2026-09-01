@@ -45,6 +45,7 @@ func _build_rows() -> void:
 	_rows["sound"] = _switch_row("SOUND", Audio.sound_on, _set_sound)
 	_rows["volume"] = _slider_row("MUSIC VOLUME", Audio.music_volume,
 		func(v: float) -> void: Audio.music_volume = v)
+	_rows["theme"] = _value_row("THEME", _cycle_theme)
 	_rows["grid"] = _switch_row("GRID LINES", Themes.grid_lines(),
 		func(on: bool) -> void: Themes.set_grid_lines(on))
 	_rows["haptics"] = _switch_row("HAPTICS", Haptics.is_enabled(), _set_haptics)
@@ -116,6 +117,7 @@ func _sync() -> void:
 	(_rows["music"]["switch"] as BaseButton).set_pressed_no_signal(Audio.music_on)
 	(_rows["sound"]["switch"] as BaseButton).set_pressed_no_signal(Audio.sound_on)
 	(_rows["volume"]["slider"] as Control).set_silent(Audio.music_volume)
+	(_rows["theme"]["value"] as Label).text = Themes.theme_name().to_upper()
 	(_rows["grid"]["switch"] as BaseButton).set_pressed_no_signal(Themes.grid_lines())
 	(_rows["haptics"]["switch"] as BaseButton).set_pressed_no_signal(Haptics.is_enabled())
 
@@ -134,3 +136,15 @@ func _set_haptics(on: bool) -> void:
 	Haptics.set_enabled(on)
 	if on:
 		Haptics.place()          # a sample of what was just switched on
+
+
+## Cycles through the themes the player has unlocked. Levelling grants more;
+## a fresh install has only the one the game ships with, so the row is a no-op
+## until then rather than a dead control.
+func _cycle_theme() -> void:
+	var open: Array[int] = Progress.unlocked_themes()
+	if open.size() < 2:
+		return
+	var i := open.find(Themes.current())
+	Themes.set_current(open[(i + 1) % open.size()])
+	_sync()
