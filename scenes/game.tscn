@@ -51,7 +51,7 @@ theme_override_constants/margin_top = 32
 theme_override_constants/margin_right = 32
 theme_override_constants/margin_bottom = 32
 script = ExtResource("3_safe")
-base_margin = 28
+base_margin = 16
 
 [node name="Layout" type="VBoxContainer" parent="SafeArea" unique_id=2146452807]
 layout_mode = 2

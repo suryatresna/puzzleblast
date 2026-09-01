@@ -144,18 +144,27 @@ func filled_count() -> int:
 	return n
 
 
-## Sprites are authored at 32px. Snapping the cell to a whole multiple of that
-## keeps every tile an exact integer scale of its source at any grid size --
-## 8 across gives 128 (4x), 12 across gives 64 (2x). Without the snap a 12-wide
-## board would land on 85px cells, a 2.66x scale that resamples every tile and
-## makes the pixel art shimmer.
+## Sprites are authored at 32px, so a cell that is a whole multiple of that
+## scales every tile by an exact integer -- 8 across gives 128 (4x).
 const SPRITE_PX := 32.0
+
+## ...but only while the snap is nearly free. On a 12-wide board the exact
+## option is 64px, which fills barely 70% of the width and leaves a quarter of
+## the board as dead margin; the honest alternative is 85px at a 2.66x scale.
+## The tiles are a smooth gradient with a thick outline rather than fine pixel
+## detail, so that resampling is hard to see, while a board a third smaller is
+## impossible to miss. Snap when it is cheap, fill when it is not.
+const MAX_SNAP_WASTE := 0.10
 
 func cell_size() -> float:
 	var c := size.x / float(grid)
 	if not _pixel:
 		return c
-	return maxf(SPRITE_PX, floorf(c / SPRITE_PX) * SPRITE_PX)
+	var fill := floorf(c)
+	var snapped := maxf(SPRITE_PX, floorf(c / SPRITE_PX) * SPRITE_PX)
+	if fill <= 0.0:
+		return fill
+	return snapped if 1.0 - (snapped / fill) <= MAX_SNAP_WASTE else fill
 
 
 ## Offset that centres the grid when flooring the cell size leaves a remainder.
