@@ -423,6 +423,60 @@ func combo_atmosphere(tint: Color, flowers: bool, combo: int, area: Vector2) -> 
 	burst.finished.connect(burst.queue_free)
 
 
+## A held halo around `rect`: slow motes drifting outward from each edge for
+## `seconds`, then allowed to finish. Unlike every other effect here this one
+## does not burst and end -- rewind is a state that lasts, so the light has to
+## keep feeding rather than fire once.
+##
+## Emitted OUTWARD on purpose. This node sits behind the board, so anything
+## aimed inward is hidden under the board's own panel.
+func time_field(rect: Rect2, tint: Color, seconds: float) -> void:
+	var band := 26.0
+	var mid := rect.get_center()
+	var edges: Array = [
+		{"at": Vector2(mid.x, rect.position.y),
+			"ext": Vector2(rect.size.x * 0.5, band), "dir": Vector2.UP},
+		{"at": Vector2(mid.x, rect.end.y),
+			"ext": Vector2(rect.size.x * 0.5, band), "dir": Vector2.DOWN},
+		{"at": Vector2(rect.position.x, mid.y),
+			"ext": Vector2(band, rect.size.y * 0.5), "dir": Vector2.LEFT},
+		{"at": Vector2(rect.end.x, mid.y),
+			"ext": Vector2(band, rect.size.y * 0.5), "dir": Vector2.RIGHT},
+	]
+	for e: Dictionary in edges:
+		var motes: CPUParticles2D = ComboBurst.instantiate()
+		add_child(motes)
+		motes.position = e["at"]
+		motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+		motes.emission_rect_extents = e["ext"]
+		motes.one_shot = false
+		motes.explosiveness = 0.0
+		motes.amount = 44
+		motes.lifetime = 1.4
+		motes.direction = e["dir"]
+		motes.spread = 24.0
+		motes.gravity = Vector2.ZERO
+		motes.initial_velocity_min = 18.0
+		motes.initial_velocity_max = 70.0
+		motes.damping_min = 10.0
+		motes.damping_max = 26.0
+		motes.scale_amount_min = 4.0
+		motes.scale_amount_max = 13.0
+		motes.color = tint
+		motes.emitting = true
+		# Stop feeding at `seconds`, then wait one lifetime so the last motes
+		# fade out instead of vanishing mid-air.
+		var hold := create_tween()
+		hold.tween_interval(seconds)
+		hold.tween_callback(func() -> void:
+			if is_instance_valid(motes):
+				motes.emitting = false)
+		hold.tween_interval(motes.lifetime)
+		hold.tween_callback(func() -> void:
+			if is_instance_valid(motes):
+				motes.queue_free())
+
+
 ## A level-up. Colour columns rising the full height of the screen -- the same
 ## drift as `combo_atmosphere`, but one emitter per palette colour instead of a
 ## single tint, which is what makes it read as a celebration rather than as a

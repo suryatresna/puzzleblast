@@ -89,6 +89,9 @@ var _level_aura := false
 ## together. Restoring the board without the tray would take the placed piece
 ## off the board AND leave the slot spent.
 var _history: Array = []
+## Kept so a second rewind restarts the clock. Without it the first one's
+## restore would fire mid-way through the second and cut the glow short.
+var _rewind_glow: Tween
 var _xp_tween: Tween
 ## While the bar is playing its roll-over, ordinary score updates must not
 ## retarget it -- they would cut the celebration off mid-fill.
@@ -516,6 +519,11 @@ const SHUFFLE_MAX_SPAN := 3
 
 ## Actions a rewind steps back over, by level.
 const REWIND_STEPS_BY_LEVEL := [1, 2, 3, 4, 5]
+## The backdrop while a rewind is settling: the Time Stone's emerald.
+const REWIND_GLOW := Color(0.13, 0.85, 0.42)
+## How long the board stays lit. Long enough to read as a held state rather
+## than another one-frame bang.
+const REWIND_GLOW_SECONDS := 3.0
 ## One deeper than the longest rewind, so the top level always has its full
 ## reach available rather than being clipped by the buffer.
 const HISTORY_MAX := 6
@@ -577,7 +585,9 @@ func _rewind(level: int) -> bool:
 
 ## A sweep back across the board rather than puffs on the restored cells: the
 ## point of a rewind is that the whole board moved, not that particular tiles
-## arrived.
+## arrived. The screen then holds an emerald wash with light gathering around
+## the board for REWIND_GLOW_SECONDS, so time being wound back reads as a state
+## the player is in rather than as another one-frame bang.
 func _on_rewound(steps: int) -> void:
 	Audio.play("collapse", 1.25)
 	var tint: Color = Blocks.power_color(Blocks.Power.REWIND)
@@ -588,6 +598,25 @@ func _on_rewound(steps: int) -> void:
 	_effects.morph_sweep(_board.size.x, tint.darkened(0.55))
 	_overlay.combo_banner_text(
 		"REWIND!" if steps == 1 else "REWIND x%d" % steps, tint)
+
+	_background.tint_to(REWIND_GLOW, 1.0, 0.30)
+	# Hugs the drawn grid, not the control: under a pixel theme the snapped
+	# grid is narrower than `size` and a halo on the control would float away
+	# from the board's edge.
+	var cell: float = _board.cell_size()
+	var span: float = cell * _board.grid
+	var at: Vector2 = _board.global_position + _board.grid_origin(cell)
+	_atmosphere.time_field(Rect2(at, Vector2(span, span)),
+		REWIND_GLOW.lightened(0.25), REWIND_GLOW_SECONDS)
+
+	if _rewind_glow and _rewind_glow.is_valid():
+		_rewind_glow.kill()
+	_rewind_glow = create_tween()
+	_rewind_glow.tween_interval(REWIND_GLOW_SECONDS)
+	# Back to whatever the combo flow had, which is also what drops a level-up
+	# wash -- a rewind's own colour supersedes it.
+	_rewind_glow.tween_callback(_restore_flow)
+
 	_shake = 5.0
 	Haptics.clear_lines(2)
 	_sync_powers()
