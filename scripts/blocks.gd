@@ -24,11 +24,13 @@ const COLORS := [
 	Color("d946ef"), # teleport
 	Color("c2410c"), # meteor
 	Color("0369a1"), # tsunami
+	Color("92400e"), # earthquake
+	Color("14b8a6"), # shuffle
 ]
 
 ## Special single-cell pieces. NONE is an ordinary shape.
 enum Power { NONE, BOMB, MORPH, LASER, FIT, DIAGONAL, BLACKHOLE, THUNDER,
-	TELEPORT, METEOR, TSUNAMI }
+	TELEPORT, METEOR, TSUNAMI, EARTHQUAKE, SHUFFLE }
 
 ## Palette index and glyph for each power.
 const POWER_COLOR := {
@@ -42,6 +44,8 @@ const POWER_COLOR := {
 	Power.TELEPORT: 15,
 	Power.METEOR: 16,
 	Power.TSUNAMI: 17,
+	Power.EARTHQUAKE: 18,
+	Power.SHUFFLE: 19,
 }
 
 const BOMB_COLOR := 8
@@ -137,7 +141,7 @@ static func is_bomb(piece: Dictionary) -> bool:
 ## equal odds, so any of the four can turn up either way.
 const ALL_POWERS := [Power.BOMB, Power.MORPH, Power.LASER, Power.FIT,
 	Power.DIAGONAL, Power.BLACKHOLE, Power.THUNDER, Power.TELEPORT,
-	Power.METEOR, Power.TSUNAMI]
+	Power.METEOR, Power.TSUNAMI, Power.EARTHQUAKE, Power.SHUFFLE]
 
 ## Shown on the call-out when a streak earns a special.
 const POWER_NAMES := {
@@ -151,6 +155,8 @@ const POWER_NAMES := {
 	Power.TELEPORT: "TELEPORT!",
 	Power.METEOR: "METEOR!",
 	Power.TSUNAMI: "TSUNAMI!",
+	Power.EARTHQUAKE: "EARTHQUAKE!",
+	Power.SHUFFLE: "SHUFFLE!",
 }
 
 
@@ -264,6 +270,46 @@ static func draw_power(ci: CanvasItem, rect: Rect2, power: Power) -> void:
 		Power.TELEPORT: _draw_teleport(ci, rect)
 		Power.METEOR: _draw_meteor(ci, rect)
 		Power.TSUNAMI: _draw_tsunami(ci, rect)
+		Power.EARTHQUAKE: _draw_earthquake(ci, rect)
+		Power.SHUFFLE: _draw_shuffle(ci, rect)
+
+
+## A fault line splitting the ground.
+static func _draw_earthquake(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.14, 0.08, 0.02)
+	var thick := maxf(2.0, span * 0.09)
+	var pts := [
+		c + Vector2(-span * 0.30, -span * 0.26),
+		c + Vector2(-span * 0.08, -span * 0.06),
+		c + Vector2(-span * 0.20, span * 0.08),
+		c + Vector2(span * 0.06, span * 0.30),
+	]
+	for i in pts.size() - 1:
+		ci.draw_line(pts[i], pts[i + 1], ink, thick)
+	# the ground either side, cracked apart
+	ci.draw_line(c + Vector2(span * 0.10, -span * 0.30),
+		c + Vector2(span * 0.30, -span * 0.30), ink, thick * 0.7)
+	ci.draw_line(c + Vector2(-span * 0.30, span * 0.28),
+		c + Vector2(-span * 0.14, span * 0.28), ink, thick * 0.7)
+
+
+## Two arrows trading places.
+static func _draw_shuffle(ci: CanvasItem, rect: Rect2) -> void:
+	var span := minf(rect.size.x, rect.size.y)
+	var c := rect.get_center()
+	var ink := Color(0.02, 0.16, 0.15)
+	var thick := maxf(2.0, span * 0.08)
+	var head := span * 0.10
+	for dir in [1.0, -1.0]:
+		var y: float = c.y + dir * span * 0.14
+		var from := Vector2(c.x - dir * span * 0.28, y)
+		var to := Vector2(c.x + dir * span * 0.28, y)
+		ci.draw_line(from, to, ink, thick)
+		var back := Vector2(-dir, 0.0) * head
+		ci.draw_line(to, to + back + Vector2(0.0, head), ink, thick)
+		ci.draw_line(to, to + back - Vector2(0.0, head), ink, thick)
 
 
 ## A rock on a streaking trail.

@@ -18,6 +18,7 @@ signal thunder_struck(cells: Array, cleared: int, points: int)
 signal blocks_teleported(from_cells: Array, to_cells: Array, color_index: int)
 signal meteor_landed(cells: Array, color_index: int, points: int)
 signal tsunami_swept(cells: Array, color_index: int, points: int)
+signal earthquake_shook(moved: Array, nudges: int)
 signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
@@ -119,6 +120,13 @@ const FILL_FLOOR_ROWS := 1
 ## nearly all of it. Progress.POWER_MAX_LEVEL caps these two at 3 to match.
 const FILL_SHARE_BY_LEVEL := [0.50, 0.70, 0.95]
 const FILL_MAX_LEVEL := 3
+
+## Earthquake. Blocks are jostled one cell at a time into whichever neighbour
+## packs them tighter, and the shaking STOPS the moment a line completes -- so
+## a low level is a nudge and a high one keeps going until something gives.
+## Each nudge must strictly improve the board, which is also what guarantees
+## the loop terminates rather than sliding one block back and forth.
+const EARTHQUAKE_NUDGES_BY_LEVEL := [4, 8, 14, 22, 32]
 
 ## Teleport lifts the span x span block at the target and sets it down
 ## somewhere it fits. `tries` is how many destinations are sampled; `smart`
@@ -375,6 +383,12 @@ func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int,
 		Blocks.Power.TELEPORT: return _teleport(at, level)
 		Blocks.Power.METEOR: return _meteor(color_index, level)
 		Blocks.Power.TSUNAMI: return _tsunami(color_index, level)
+		Blocks.Power.EARTHQUAKE: return _earthquake(level)
+		# The tray belongs to game.gd, not to the board. It intercepts shuffle
+		# before place() is ever called; returning false here means a wiring
+		# mistake shows up as a refund rather than as a power that silently
+		# does nothing.
+		Blocks.Power.SHUFFLE: return false
 	return true
 
 
@@ -872,6 +886,95 @@ func _tsunami(color_index: int, level := 1) -> bool:
 	var filled: Array = empties.slice(0, take)
 	var points := _settle_fill(filled, color_index)
 	tsunami_swept.emit(filled, color_index, points)
+	_resolve_lines()
+	best = maxi(best, score)
+	score_changed.emit(score, best, combo)
+	queue_redraw()
+	return true
+
+
+## Rows plus columns that are currently complete.
+func _count_full_lines() -> int:
+	var n := 0
+	for y in grid:
+		var whole := true
+		for x in grid:
+			if _grid[y][x] == EMPTY:
+				whole = false
+				break
+		if whole:
+			n += 1
+	for x in grid:
+		var whole := true
+		for y in grid:
+			if _grid[y][x] == EMPTY:
+				whole = false
+				break
+		if whole:
+			n += 1
+	return n
+
+
+## What moving the block at `src` to the empty cell `dst` is worth. Completing
+## a line dwarfs everything else; below that it is simply whether the block
+## ends up in fuller company than it left. Measured after the move, so the hole
+## the block leaves behind counts against it.
+func _shift_gain(src: Vector2i, dst: Vector2i) -> int:
+	var color: int = _grid[src.y][src.x]
+	_grid[src.y][src.x] = EMPTY
+	_grid[dst.y][dst.x] = color
+	var gain: int = _count_full_lines() * 1000 \
+		+ _fill_pressure(dst) - _fill_pressure(src)
+	_grid[dst.y][dst.x] = EMPTY
+	_grid[src.y][src.x] = color
+	return gain
+
+
+## Shakes the board: settled blocks hop one cell into whichever neighbour packs
+## them tighter, over and over, and it stops as soon as a line completes. Only
+## strictly improving moves are taken, which both keeps the shaking useful and
+## guarantees it terminates instead of rocking one block back and forth.
+func _earthquake(level := 1) -> bool:
+	var budget: int = int(EARTHQUAKE_NUDGES_BY_LEVEL[_lvl(level)])
+	var moved: Array = []
+
+	for step in budget:
+		var from := Vector2i(-1, -1)
+		var to := Vector2i(-1, -1)
+		# NOT named `best`: that is the member holding the high score, and a
+		# local of the same name would silently swallow the update below.
+		var best_gain := 0               # strictly positive, so ties do nothing
+		for y in grid:
+			for x in grid:
+				if _grid[y][x] == EMPTY:
+					continue
+				var src := Vector2i(x, y)
+				for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT,
+						Vector2i.UP, Vector2i.DOWN]:
+					var dst := src + d
+					if dst.x < 0 or dst.x >= grid or dst.y < 0 or dst.y >= grid:
+						continue
+					if _grid[dst.y][dst.x] != EMPTY:
+						continue
+					var gain := _shift_gain(src, dst)
+					if gain > best_gain:
+						best_gain = gain
+						from = src
+						to = dst
+		if best_gain <= 0:
+			break                        # nothing left that helps
+
+		_grid[to.y][to.x] = _grid[from.y][from.x]
+		_grid[from.y][from.x] = EMPTY
+		_pops.erase(from)
+		_pops[to] = 0.0
+		moved.append(to)
+		if _count_full_lines() > 0:
+			break                        # shook something loose; stop here
+
+	if moved.is_empty():
+		return false
+	earthquake_shook.emit(moved, moved.size())
 	_resolve_lines()
 	best = maxi(best, score)
 	score_changed.emit(score, best, combo)

@@ -106,6 +106,7 @@ func _ready() -> void:
 	_board.blocks_teleported.connect(_on_blocks_teleported)
 	_board.meteor_landed.connect(_on_meteor_landed)
 	_board.tsunami_swept.connect(_on_tsunami_swept)
+	_board.earthquake_shook.connect(_on_earthquake_shook)
 	_board.board_morphed.connect(_on_board_morphed)
 	_board.piece_fitted.connect(_on_piece_fitted)
 	_board.lines_cleared.connect(_on_lines_cleared)
@@ -464,18 +465,104 @@ func _drop_tray_piece() -> void:
 ## must resolve at the level it was shown at. And charge is taken only after
 ## `place()` reports it actually fired, so a drop the board refuses cannot
 ## still bill the player.
+## Slots guaranteed to be dealt a piece that actually fits, by shuffle level.
+## This table lives here rather than beside the others in board.gd because the
+## tray is this screen's, not the board's -- board.gd has no idea a tray exists.
+const SHUFFLE_FITTING_BY_LEVEL := [3, 4, 5, 5, 5]
+## From here up, the guaranteed slots take the LARGEST piece that fits rather
+## than any of them, so a levelled shuffle is worth more than a re-roll.
+const SHUFFLE_BIG_LEVEL := 4
+## Nothing wider or taller than this is offered: the request is for pieces that
+## slot into the gaps a played board leaves, not for another 4-long bar.
+const SHUFFLE_MAX_SPAN := 3
+
+
 func _fire_power() -> void:
 	var power: int = Progress.equipped(_drag_index)
 	if power == Blocks.Power.NONE or not Progress.can_afford(power):
 		_sync_powers()
 		return
-	var piece: Dictionary = Blocks.power_piece(power)
 	var level: int = Progress.level_of(power)
+
+	# Shuffle never reaches the board: it rewrites the tray, which lives here.
+	if power == Blocks.Power.SHUFFLE:
+		if not _shuffle_tray(level):
+			_sync_powers()    # no piece fits anywhere: a free cancel
+			return
+		Progress.spend(power)
+		_on_tray_shuffled()
+		_sync_powers()
+		return
+
+	var piece: Dictionary = Blocks.power_piece(power)
 	if not _board.place(piece["cells"], _drag_origin, piece["color"], power, level):
 		_sync_powers()        # dropped off the board: a free cancel
 		return
 	Progress.spend(power)
 	_sync_powers()
+
+
+## Re-deals the tray with pieces the board can actually take. Returns false
+## when nothing in the catalogue fits at all -- which is exactly the board
+## where a shuffle would be worthless, so the charge is handed back.
+func _shuffle_tray(level: int) -> bool:
+	var lvl: int = clampi(level, 1, SHUFFLE_FITTING_BY_LEVEL.size())
+	var guaranteed: int = int(SHUFFLE_FITTING_BY_LEVEL[lvl - 1])
+
+	var fitting: Array = []
+	for piece: Dictionary in Blocks.catalogue():
+		var span: Vector2i = piece["size"]
+		if span.x > SHUFFLE_MAX_SPAN or span.y > SHUFFLE_MAX_SPAN:
+			continue
+		if _board.has_any_move([piece]):
+			fitting.append(piece)
+	if fitting.is_empty():
+		return false
+
+	# The biggest fitting piece is worth the most, so a levelled shuffle hands
+	# those out; below that it is an even draw from whatever fits.
+	var by_cells := fitting.duplicate()
+	by_cells.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return (a["cells"] as Array).size() > (b["cells"] as Array).size())
+
+	_kill_deal_tweens()
+	_tray.clear()
+	for i in TRAY_SIZE:
+		if i < guaranteed:
+			if lvl >= SHUFFLE_BIG_LEVEL:
+				# Spread across the top of the list rather than five copies of
+				# the single largest piece.
+				_tray.append(by_cells[mini(i, by_cells.size() - 1)])
+			else:
+				_tray.append(fitting[randi() % fitting.size()])
+		else:
+			_tray.append(Blocks.random_piece())
+	_sync_tray()
+	_deal_animation()
+	return true
+
+
+func _on_tray_shuffled() -> void:
+	Audio.play("place", 1.1)
+	var tint: Color = Blocks.power_color(Blocks.Power.SHUFFLE)
+	_overlay.combo_banner_text("SHUFFLE!", tint)
+	Haptics.clear_lines(1)
+
+
+## The earthquake. Blocks hop one cell at a time, so the screen shakes for the
+## whole cast rather than punching once, and each landing gets a puff.
+func _on_earthquake_shook(moved: Array, nudges: int) -> void:
+	Audio.play("collapse", 0.7)
+	var cell: float = _board.cell_size()
+	var tint: Color = Blocks.power_color(Blocks.Power.EARTHQUAKE)
+	for c: Vector2i in _sample_cells(moved, MAX_FILL_PUFFS):
+		_effects.place_puff([c], cell, tint)
+	_overlay.combo_banner_text("EARTHQUAKE!", tint)
+	# Scaled by how long the ground kept moving, and the strongest shake in the
+	# game: this is the one power whose whole idea is the shaking.
+	_shake = 14.0 + mini(nudges, 32) * 0.9
+	Haptics.blast()
+	_sync_tray()
 
 
 ## A run is only over when neither the tray nor the strip can do anything. A

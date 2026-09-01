@@ -58,10 +58,12 @@ const REWARDS := {
 	20: {"charge": 5},
 	25: {"power": 1},
 	27: {"power": 1},
+	28: {"power": 1},
 	30: {"power": 1},
 	35: {"power": 1},
 	45: {"power": 1},
 	47: {"power": 1},
+	48: {"power": 1},
 	50: {"power": 1},
 	55: {"power": 1},
 }
@@ -92,9 +94,11 @@ const POWER_MAX_LEVEL := {
 ## `level` 1 means no gate: the first tier is what a new player chooses from.
 const POWER_TIERS := [
 	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH]},
-	{"level": 25, "powers": [Blocks.Power.THUNDER, Blocks.Power.LASER]},
+	{"level": 25, "powers": [Blocks.Power.SHUFFLE, Blocks.Power.THUNDER,
+		Blocks.Power.LASER]},
 	{"level": 30, "powers": [Blocks.Power.DIAGONAL, Blocks.Power.TELEPORT]},
-	{"level": 45, "powers": [Blocks.Power.METEOR, Blocks.Power.TSUNAMI]},
+	{"level": 45, "powers": [Blocks.Power.METEOR, Blocks.Power.TSUNAMI,
+		Blocks.Power.EARTHQUAKE]},
 	{"level": 50, "powers": [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]},
 ]
 
@@ -114,6 +118,8 @@ const COST := {
 	Blocks.Power.TELEPORT: 5,
 	Blocks.Power.METEOR: 5,
 	Blocks.Power.TSUNAMI: 6,
+	Blocks.Power.EARTHQUAKE: 6,
+	Blocks.Power.SHUFFLE: 4,
 }
 
 const BASE_MAX_CHARGE := 10

@@ -226,6 +226,24 @@ def glyph(name):
                 oy = y + round(3 - dy * 3)             # crest up, trough down
                 d.point((a + k, oy), fill=W)
                 d.point((a + k, oy + 1), fill=W)
+    elif name == "earthquake":
+        # A fault line with DISPLACEMENT: ground either side of the split sits
+        # at different heights. A plain zigzag read as the thunder bolt.
+        d.rectangle([a, mid - 5, mid - 2, mid - 2], fill=W)        # left, high
+        d.rectangle([mid + 2, mid + 1, b, mid + 4], fill=W)        # right, low
+        for k in range(7):                                          # the split
+            d.point((mid - 1 + (k % 2), mid - 5 + k), fill=W)
+            d.point((mid + (k % 2), mid - 5 + k), fill=W)
+        d.rectangle([a + 3, b - 3, a + 6, b - 2], fill=W)           # rubble
+        d.rectangle([b - 6, a + 2, b - 3, a + 3], fill=W)
+    elif name == "shuffle":
+        # Two arrows trading places. The head is a triangle with its APEX at
+        # the tip and its base behind it -- reversed, it reads as a barbell.
+        for sgn, y in ((1, mid - 5), (-1, mid + 4)):
+            d.line([(a + 2, y), (b - 2, y)], fill=W, width=3)
+            tip = (b - 1) if sgn > 0 else (a + 1)
+            base = tip - sgn * 5
+            d.polygon([(tip, y), (base, y - 4), (base, y + 4)], fill=W)
     elif name == "fit":
         for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):        # 4 arrows
             cx = mid + dx * 6
@@ -256,6 +274,7 @@ if __name__ == "__main__":
     # dark panels: #3A2C22 -> #241C16 is a much steeper ~0.62
     save(plate_sprite(0.62, ink=(15, 12, 10, 255)), "panel_dark")
     for g in ("bomb", "laser", "collapse", "fit", "diagonal",
-              "blackhole", "thunder", "teleport", "meteor", "tsunami"):
+              "blackhole", "thunder", "teleport", "meteor", "tsunami",
+              "earthquake", "shuffle"):
         save(glyph(g), "glyph_" + g)
     print("done -> ui/pixel/")
