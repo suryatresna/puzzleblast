@@ -21,7 +21,16 @@ signal solved_changed
 const SAVE_PATH := "user://settings.cfg"
 const Blocks := preload("res://scripts/blocks.gd")
 
-enum Id { PALETTE, SPRINT, PUZZLE }
+enum Id { PALETTE, SPRINT, PUZZLE, BIG_PALETTE }
+
+## Cells per side, per mode. The board snaps its cell size to a whole multiple
+## of the 32px sprite, so 8 plays at 128px cells and 12 at 64px.
+const GRIDS := {
+	Id.PALETTE: 8,
+	Id.SPRINT: 8,
+	Id.PUZZLE: 8,
+	Id.BIG_PALETTE: 12,
+}
 
 ## Seconds on the Sprint clock.
 const SPRINT_SECONDS := 60.0
@@ -41,6 +50,12 @@ const DEFS := {
 		"name": "SPRINT",
 		"blurb": "Sixty seconds. Clear everything.",
 		"icon": "60",
+		"featured": false,
+	},
+	Id.BIG_PALETTE: {
+		"name": "BIG PALETTE",
+		"blurb": "Twelve across. Room to breathe, longer to fill.",
+		"icon": "big",
 		"featured": false,
 	},
 	Id.PUZZLE: {
@@ -80,6 +95,11 @@ func blurb(id: int = current) -> String:
 
 func ids() -> Array:
 	return DEFS.keys()
+
+
+## Cells per side for a mode.
+func grid_of(id: int = current) -> int:
+	return int(GRIDS.get(id, 8))
 
 
 func set_current(id: int) -> void:
@@ -133,7 +153,7 @@ func puzzle_target(level: int) -> int:
 func puzzle_layout(level: int) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("pixelblast-puzzle-%d" % level)
-	var size: int = 8
+	var size: int = grid_of(Id.PUZZLE)
 	var cells: Dictionary = {}
 	# Density climbs slowly: an early board is a light scatter, a late one is
 	# most of the way to full.

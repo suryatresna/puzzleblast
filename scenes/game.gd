@@ -689,7 +689,13 @@ func _leave() -> void:
 func _setup_mode() -> void:
 	_puzzle_cleared = 0
 	%FuseBar.stop()
+	# Before anything else: the grid changes the cell size, and every layout
+	# and legality check downstream depends on it.
+	_board.set_grid(Modes.grid_of())
 	match Modes.current:
+		Modes.Id.BIG_PALETTE:
+			%FuseBar.hide()
+			%Objective.hide()
 		Modes.Id.SPRINT:
 			%FuseBar.show()
 			%FuseBar.start(Modes.SPRINT_SECONDS)

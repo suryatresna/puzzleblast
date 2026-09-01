@@ -16,6 +16,8 @@ signal board_morphed(dropped: int)
 signal piece_fitted(cells: Array, color_index: int)
 signal game_over()
 
+## Default grid. `grid` is the live value -- Big Palette plays on 12 -- and is
+## set before `reset()`. Not named `size`: that is Control's own property.
 const SIZE := 8
 const EMPTY := -1
 
@@ -55,6 +57,8 @@ var shake_offset := Vector2.ZERO:
 		shake_offset = value.round() if _pixel else value
 		queue_redraw()
 
+## Cells per side. Change it through `set_grid()`, which rebuilds the board.
+var grid := SIZE
 var _grid: Array = []
 ## Cell -> seconds elapsed in its landing animation.
 var _pops: Dictionary = {}
@@ -71,6 +75,18 @@ var _tile_tex: Texture2D = null
 var _socket_tex: Texture2D = null
 var _grid_lines := true
 var _last_cell := 0.0
+
+
+## Resizes the grid and starts a fresh board. Presentation caches are rebuilt
+## because the cell size changes with the grid.
+func set_grid(cells: int) -> void:
+	var n := maxi(2, cells)
+	if n == grid:
+		return
+	grid = n
+	_last_cell = -1.0
+	reset()
+	queue_redraw()
 
 
 func _ready() -> void:
@@ -90,9 +106,9 @@ func _on_theme_changed(_id: int) -> void:
 
 func reset() -> void:
 	_grid.clear()
-	for y in SIZE:
+	for y in grid:
 		var row := []
-		row.resize(SIZE)
+		row.resize(grid)
 		row.fill(EMPTY)
 		_grid.append(row)
 	score = 0
@@ -112,7 +128,7 @@ func reset() -> void:
 func preset(cells: Dictionary) -> void:
 	reset()
 	for key: Vector2i in cells:
-		if key.x < 0 or key.x >= SIZE or key.y < 0 or key.y >= SIZE:
+		if key.x < 0 or key.x >= grid or key.y < 0 or key.y >= grid:
 			continue
 		_grid[key.y][key.x] = int(cells[key])
 	queue_redraw()
@@ -121,27 +137,33 @@ func preset(cells: Dictionary) -> void:
 ## How many cells are occupied. Puzzle mode reports progress with it.
 func filled_count() -> int:
 	var n := 0
-	for y in SIZE:
-		for x in SIZE:
+	for y in grid:
+		for x in grid:
 			if _grid[y][x] != EMPTY:
 				n += 1
 	return n
 
 
+## Sprites are authored at 32px. Snapping the cell to a whole multiple of that
+## keeps every tile an exact integer scale of its source at any grid size --
+## 8 across gives 128 (4x), 12 across gives 64 (2x). Without the snap a 12-wide
+## board would land on 85px cells, a 2.66x scale that resamples every tile and
+## makes the pixel art shimmer.
+const SPRITE_PX := 32.0
+
 func cell_size() -> float:
-	var c := size.x / float(SIZE)
-	# A pixel theme needs whole-pixel cells or every tile is resampled and the
-	# grid shimmers. At 1080 wide this lands on exactly 128 -- four times the
-	# 32px the sprites were drawn at.
-	return floorf(c) if _pixel else c
+	var c := size.x / float(grid)
+	if not _pixel:
+		return c
+	return maxf(SPRITE_PX, floorf(c / SPRITE_PX) * SPRITE_PX)
 
 
 ## Offset that centres the grid when flooring the cell size leaves a remainder.
 func grid_origin(cell: float) -> Vector2:
 	if not _pixel:
 		return Vector2.ZERO
-	return Vector2(floorf((size.x - cell * SIZE) * 0.5),
-		floorf((size.y - cell * SIZE) * 0.5))
+	return Vector2(floorf((size.x - cell * grid) * 0.5),
+		floorf((size.y - cell * grid) * 0.5))
 
 
 # --- placement ---------------------------------------------------------------
@@ -149,7 +171,7 @@ func grid_origin(cell: float) -> Vector2:
 func can_place(cells: Array, origin: Vector2i) -> bool:
 	for c: Vector2i in cells:
 		var p := origin + c
-		if p.x < 0 or p.x >= SIZE or p.y < 0 or p.y >= SIZE:
+		if p.x < 0 or p.x >= grid or p.y < 0 or p.y >= grid:
 			return false
 		if _grid[p.y][p.x] != EMPTY:
 			return false
@@ -196,9 +218,9 @@ func _fire_power(power: Blocks.Power, at: Vector2i, color_index: int) -> void:
 ## Burns out the whole row and column the laser lands on.
 func _laser(at: Vector2i) -> void:
 	var doomed := {}
-	for x in SIZE:
+	for x in grid:
 		doomed[Vector2i(x, at.y)] = true
-	for y in SIZE:
+	for y in grid:
 		doomed[Vector2i(at.x, y)] = true
 
 	var cleared := 0
@@ -224,9 +246,9 @@ func _morph(at: Vector2i, color_index: int) -> void:
 	_pops[at] = 0.0
 
 	var dropped := 0
-	for x in SIZE:
-		var write := SIZE - 1
-		for y in range(SIZE - 1, -1, -1):
+	for x in grid:
+		var write := grid - 1
+		for y in range(grid - 1, -1, -1):
 			if _grid[y][x] == EMPTY:
 				continue
 			if write != y:
@@ -260,7 +282,7 @@ func _fit(at: Vector2i, color_index: int) -> void:
 		filled.append(cell)
 		for step: Vector2i in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
 			var n: Vector2i = cell + step
-			if n.x < 0 or n.x >= SIZE or n.y < 0 or n.y >= SIZE:
+			if n.x < 0 or n.x >= grid or n.y < 0 or n.y >= grid:
 				continue
 			if seen.has(n) or _grid[n.y][n.x] != EMPTY:
 				continue
@@ -280,13 +302,13 @@ func _fit(at: Vector2i, color_index: int) -> void:
 ## Nothing is scored for the bomb cell itself -- only for what it destroys.
 func _detonate(at: Vector2i) -> void:
 	@warning_ignore("integer_division")
-	var half := SIZE / 2
+	var half := grid / 2
 	var from_row: int = 0 if at.y < half else half
 	var to_row: int = from_row + half - 1
 
 	var cleared := 0
 	for y in range(from_row, to_row + 1):
-		for x in SIZE:
+		for x in grid:
 			if _grid[y][x] != EMPTY:
 				cleared += 1
 				_grid[y][x] = EMPTY
@@ -305,18 +327,18 @@ func _resolve_lines() -> void:
 	var full_rows: Array = []
 	var full_cols: Array = []
 
-	for y in SIZE:
+	for y in grid:
 		var complete := true
-		for x in SIZE:
+		for x in grid:
 			if _grid[y][x] == EMPTY:
 				complete = false
 				break
 		if complete:
 			full_rows.append(y)
 
-	for x in SIZE:
+	for x in grid:
 		var complete := true
-		for y in SIZE:
+		for y in grid:
 			if _grid[y][x] == EMPTY:
 				complete = false
 				break
@@ -330,10 +352,10 @@ func _resolve_lines() -> void:
 	# A cell sitting on both a full row and a full column must only count once.
 	var doomed := {}
 	for y: int in full_rows:
-		for x in SIZE:
+		for x in grid:
 			doomed[Vector2i(x, y)] = true
 	for x: int in full_cols:
-		for y in SIZE:
+		for y in grid:
 			doomed[Vector2i(x, y)] = true
 
 	combo = mini(combo + 1, MAX_COMBO)
@@ -379,8 +401,8 @@ func has_any_move(pieces: Array) -> bool:
 		if piece.is_empty():
 			continue
 		var span: Vector2i = piece["size"]
-		for y in range(SIZE - span.y + 1):
-			for x in range(SIZE - span.x + 1):
+		for y in range(grid - span.y + 1):
+			for x in range(grid - span.x + 1):
 				if can_place(piece["cells"], Vector2i(x, y)):
 					return true
 	return false
@@ -449,22 +471,27 @@ func _draw() -> void:
 		return
 	_sync_metrics(cell)
 
+	# Both the panel and its frame hug the GRID, not this control. They are the
+	# same size only when the cells divide the control exactly; on a 12-wide
+	# board the cell snaps down to 64px and the grid is narrower, which would
+	# otherwise leave dead board inside the frame.
+	var extent := Vector2(cell * grid, cell * grid)
+	var panel := Rect2(grid_origin(cell) + shake_offset, extent)
+
 	# Nearly opaque on purpose: the combo shower drifts behind this panel, and
 	# at a lower alpha the particles bleed through and look like they are on
 	# top of the playfield.
-	draw_rect(Rect2(shake_offset, size),
-		Themes.value("board_bg", Color(0.043, 0.039, 0.098, 0.93)))
+	draw_rect(panel, Themes.value("board_bg", Color(0.043, 0.039, 0.098, 0.93)))
 
 	# The design frames the playfield with an ink border sitting just outside
 	# the grid (`box-shadow: 0 0 0 4px` at 2x, so 2 logical px -> 8 here).
 	var frame: Variant = Themes.value("board_border", null)
 	if frame != null:
 		var w := 8.0
-		draw_rect(Rect2(shake_offset - Vector2(w, w) * 0.5, size + Vector2(w, w)),
-			frame as Color, false, w)
+		draw_rect(panel.grow(w * 0.5), frame as Color, false, w)
 
-	for y in SIZE:
-		for x in SIZE:
+	for y in grid:
+		for x in grid:
 			var value: int = _grid[y][x]
 			if value == EMPTY:
 				_draw_cell(cell_rect(x, y, cell), -1)
@@ -490,7 +517,7 @@ func _draw() -> void:
 		_draw_grid(cell)
 
 	for c: Vector2i in preview_cells:
-		if c.x < 0 or c.x >= SIZE or c.y < 0 or c.y >= SIZE:
+		if c.x < 0 or c.x >= grid or c.y < 0 or c.y >= grid:
 			continue
 		_draw_ghost(cell_rect(c.x, c.y, cell), preview_valid)
 
@@ -503,11 +530,11 @@ func _draw_grid(cell: float) -> void:
 	var line := Color(ink, 0.28 if _pixel else 0.10)
 	var w := 4.0 if _pixel else 2.0
 	var o := grid_origin(cell) + shake_offset
-	for i in range(1, SIZE):
+	for i in range(1, grid):
 		var x := o.x + i * cell
-		draw_line(Vector2(x, o.y), Vector2(x, o.y + cell * SIZE), line, w)
+		draw_line(Vector2(x, o.y), Vector2(x, o.y + cell * grid), line, w)
 		var y := o.y + i * cell
-		draw_line(Vector2(o.x, y), Vector2(o.x + cell * SIZE, y), line, w)
+		draw_line(Vector2(o.x, y), Vector2(o.x + cell * grid, y), line, w)
 
 
 ## One cell. `value` is a palette index, or -1 for an empty socket.

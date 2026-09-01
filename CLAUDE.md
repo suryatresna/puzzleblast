@@ -114,7 +114,7 @@ The play screen splits cleanly in three. Respect this when adding features:
 
 ### Pieces
 
-`scripts/blocks.gd` holds 15 base shapes in `BASE`; rotations are **generated at load** and de-duplicated, producing 37 pieces. To add a shape, add one line to `BASE` — do not hand-write rotations. Pieces are plain `Dictionary` values: `{cells, color, size, weight}`, plus `bomb: true` for the bomb.
+`scripts/blocks.gd` holds 18 base shapes in `BASE`, including three diagonals; rotations are **generated at load** and de-duplicated, producing 37 pieces. To add a shape, add one line to `BASE` — do not hand-write rotations. Pieces are plain `Dictionary` values: `{cells, color, size, weight}`, plus `bomb: true` for the bomb.
 
 The **bomb** is a 1×1 special that clears the half of the board it lands in (split on the horizontal midline). It arrives two ways: a 20% roll **per tray refill** (never per card — that could deal three at once), and as a reward for a 2× combo. Both paths respect one invariant: **at most one bomb in hand at a time**.
 
@@ -159,6 +159,8 @@ python3 tools/gen_pixel_sprites.py                       # ui/pixel/*.png
 
 Watch the token names: `#241C16` is the dark **panel**, but the dark **board** is a step darker at `#201914`. The board also carries an ink frame outside the grid (`board_border`), which is the design's `box-shadow: 0 0 0 4px` — 4px at the mockup's 2x, so 2 logical px, 8 in our space.
 
+**The grid size is variable.** `cell_size()` snaps the cell to a whole multiple of the 32px sprite (`SPRITE_PX`), so every tile is an exact integer scale of its source at any grid: 8 across gives 128px cells (4x), 12 across gives 64px (2x). Without the snap a 12-wide board lands on 85px cells — a 2.66x scale that resamples every tile. Because the snapped grid can be narrower than the control, the board panel and its ink frame are drawn around the **grid extent**, not around `size`.
+
 **Pixel geometry.** The design is 270×480 with 32px tiles; the game runs at 1080×1920, exactly 4×. Sprites are therefore generated pre-upscaled (a 32px tile is stored at 128px) rather than relying on filtering — `StyleBoxTexture` nine-patch margins are measured in texture pixels and are *not* scaled when drawn, so a 48px plate with a 12px margin would render tiny corners. `base_margin = 28` on the game screen gives a 1024px board and exactly 128px cells. Under a pixel theme `cell_size()` floors, `grid_origin()` centres the remainder, and `shake_offset` rounds to whole pixels.
 
 ### Game modes
@@ -166,6 +168,7 @@ Watch the token names: `#241C16` is the dark **panel**, but the dark **board** i
 Three, defined in `Modes.DEFS`; the picker (`scenes/modes.tscn`) builds its cards from that table, so a fourth mode is a table entry plus whatever `game.gd` needs in `_setup_mode()`.
 
 - **Palette** — the original endless run. Nothing is added.
+- **Big Palette** — the same rules on a 12x12 grid. The board's grid is a variable (`Board.grid`, set from `Modes.GRIDS` in `_setup_mode`), not a constant; `Board.SIZE` is only the default now.
 - **Sprint** — `scripts/fuse_bar.gd` counts 60 seconds down as a burning fuse; when it empties it calls `_board.declare_game_over()` rather than ending the run itself, so every end-of-run path stays in one place.
 - **Puzzle** — `Modes.puzzle_layout(level)` returns a starting board, seeded from the level so board N is always identical. Two invariants it must keep: no row or column may start full (it would clear the instant it is drawn), and the board must leave room for the opening deal. The objective is lines-cleared, tracked in `game.gd._puzzle_cleared`.
 

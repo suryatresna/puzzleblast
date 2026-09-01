@@ -50,6 +50,15 @@ func _draw() -> void:
 			draw_string(font, Vector2((size.x - w.x) * 0.5,
 				(size.y + w.y * 0.6) * 0.5), s,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Themes.text_color("text"))
+		"big":
+			# A 3x3 of small tiles: the same mark as Palette, but denser.
+			var pad3 := 12.0
+			var c3 := (size.x - pad3 * 4.0) / 3.0
+			for i in 9:
+				var at3 := Vector2(pad3 + (i % 3) * (c3 + pad3),
+					pad3 + (i / 3) * (c3 + pad3))
+				draw_rect(Rect2(at3, Vector2(c3, c3)),
+					Themes.block_color([6, 3, 2, 1, 0, 3, 2, 1, 6][i]))
 		"gem":
 			# The design's octagon: a square with the corners cut at 25%.
 			var c := size * 0.5

@@ -36,6 +36,16 @@ const BOMB_COLOR := 8
 const BASE := [
 	{"cells": [Vector2i(0, 0)], "weight": 2, "color": 3, "rotate": false},
 
+	# Diagonals. Deliberately rare: a diagonal contributes to two different
+	# lines at once but completes neither, so a hand full of them stalls the
+	# board. They exist to make a tidy grid suddenly awkward.
+	{"cells": [Vector2i(0, 0), Vector2i(1, 1)], "weight": 3, "color": 6,
+		"rotate": true},
+	{"cells": [Vector2i(0, 0), Vector2i(1, 1), Vector2i(2, 2)],
+		"weight": 2, "color": 6, "rotate": true},
+	{"cells": [Vector2i(0, 0), Vector2i(2, 0), Vector2i(1, 1)],
+		"weight": 2, "color": 7, "rotate": true},
+
 	{"cells": [Vector2i(0, 0), Vector2i(1, 0)], "weight": 6, "color": 0, "rotate": true},
 	{"cells": [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)],
 		"weight": 7, "color": 0, "rotate": true},
