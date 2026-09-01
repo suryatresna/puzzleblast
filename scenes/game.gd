@@ -89,6 +89,8 @@ var _history: Array = []
 ## Kept so one cast restarts the clock on the last. Without it the first one's
 ## pending restore fires mid-way through the second and cuts its sky short.
 var _power_glow: Tween
+## Re-lights the doubled-session halo for as long as the run lasts.
+var _bonus_pulse: Tween
 var _xp_tween: Tween
 ## While the bar is playing its roll-over, ordinary score updates must not
 ## retarget it -- they would cut the celebration off mid-fill.
@@ -251,7 +253,8 @@ func _sync_powers() -> void:
 func _sync_xp() -> void:
 	if _xp_rolling:
 		return
-	%XpKey.text = "LEVEL %d" % Progress.level()
+	%XpKey.text = "LEVEL %d  ·  2x" % Progress.level() if Progress.bonus_active() \
+		else "LEVEL %d" % Progress.level()
 	var target := Progress.level_progress()
 	if _xp_tween and _xp_tween.is_valid():
 		_xp_tween.kill()
@@ -512,6 +515,10 @@ const SHUFFLE_BIG_LEVEL := 4
 ## slot into the gaps a played board leaves, not for another 4-long bar.
 const SHUFFLE_MAX_SPAN := 3
 
+## The doubled-XP session: gold, and re-lit on this cadence for the whole run.
+const BONUS_TINT := Color(1.0, 0.82, 0.25)
+const BONUS_PULSE_SECONDS := 3.5
+
 ## Actions a rewind steps back over, by level.
 const REWIND_STEPS_BY_LEVEL := [1, 2, 3, 4, 5]
 ## Backdrop and light for every power: the sky it washes the screen to, the
@@ -659,6 +666,40 @@ func _on_rewound(steps: int) -> void:
 	_shake = 5.0
 	Haptics.clear_lines(2)
 	_sync_powers()
+
+
+## A doubled session announces itself and keeps announcing it: the halo is
+## re-lit on a slow repeat for the whole run, because a one-off flash at the
+## start would be gone by the time the player is deciding whether it was worth
+## coming back. The backdrop is deliberately left alone -- the combo flow owns
+## it, and a session-long tint would fight every clear.
+func _begin_bonus_session() -> void:
+	_sync_xp()
+	_overlay.combo_banner_text("DOUBLE XP!", BONUS_TINT)
+	Haptics.celebrate(get_tree())
+	if _bonus_pulse and _bonus_pulse.is_valid():
+		_bonus_pulse.kill()
+	_bonus_pulse = create_tween().set_loops()
+	_bonus_pulse.tween_callback(_pulse_bonus_aura)
+	_bonus_pulse.tween_interval(BONUS_PULSE_SECONDS)
+	_pulse_bonus_aura()
+
+
+func _end_bonus_session() -> void:
+	if _bonus_pulse and _bonus_pulse.is_valid():
+		_bonus_pulse.kill()
+	_sync_xp()
+
+
+func _pulse_bonus_aura() -> void:
+	if not Progress.bonus_active():
+		_end_bonus_session()
+		return
+	var cell: float = _board.cell_size()
+	var span: float = cell * _board.grid
+	var at: Vector2 = _board.global_position + _board.grid_origin(cell)
+	_atmosphere.time_field(Rect2(at, Vector2(span, span)), BONUS_TINT,
+		BONUS_PULSE_SECONDS * 0.6)
 
 
 func _fire_power() -> void:
@@ -1154,6 +1195,12 @@ func _on_game_over() -> void:
 	%FinalScore.text = str(_board.score)
 	%FinalBest.text = "%d lines cleared" % _board.lines
 	%RankLabel.text = _rank_text(rank)
+	_end_bonus_session()
+	# The nudge the whole bonus exists for: say what one more run is worth,
+	# after the rank line so it reads as the reason to tap Retry.
+	var nudge := _bonus_hint()
+	if not nudge.is_empty():
+		%RankLabel.text += "\n" + nudge
 	var title: Label = %GameOverPanel/Center/Box/Title
 	if solved:
 		title.text = "BOARD\nSOLVED"
@@ -1165,6 +1212,16 @@ func _on_game_over() -> void:
 	%RetryButton.grab_focus()
 
 
+## What the next run is worth, in one line. Empty when there is nothing to say.
+func _bonus_hint() -> String:
+	if Progress.bonus_ready():
+		return "Next run earns DOUBLE XP"
+	var runs: int = Progress.runs_until_bonus()
+	if runs == 1:
+		return "One more run today earns DOUBLE XP"
+	return "%d more runs today earn DOUBLE XP" % runs
+
+
 ## Banks the score earned since the last call. Only the delta goes across, so
 ## feeding continuously and topping up at game over cannot double-count.
 func _bank(score: int) -> void:
@@ -1172,7 +1229,7 @@ func _bank(score: int) -> void:
 	if delta <= 0:
 		return
 	_banked = score
-	var gained := Progress.add_score(delta)
+	var gained := Progress.add_score(delta * Progress.xp_multiplier())
 	if gained <= 0:
 		return
 	_levels_this_run += gained
@@ -1238,6 +1295,7 @@ func _show_level_up(gained: int) -> void:
 			earned.append("a bigger board")
 	%LevelUpNote.text = "Unlocked: " + ", ".join(earned) if not earned.is_empty() \
 		else "Keep going."
+
 
 	# No floating banner here: combo_banner_text draws at screen centre, which
 	# is exactly where the game-over panel puts this label, and the two
@@ -1324,7 +1382,14 @@ func _restart() -> void:
 	_beat_best = false
 	_last_combo = 0
 	%ScoreValue.reset_to(0)
+	# touch_day first: crossing into a new day can itself bank a bonus, and the
+	# claim below should be able to spend it on this very run.
 	Progress.touch_day()
+	Progress.note_run_started()
+	if Progress.claim_bonus():
+		_begin_bonus_session()
+	else:
+		_end_bonus_session()
 	_board.reset()
 	_setup_mode()
 	_board.best = Scores.best(Modes.current)

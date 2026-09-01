@@ -26,14 +26,23 @@ signal charge_changed(charge: int, max_charge: int)
 signal power_level_changed(power: int, level: int)
 signal loadout_changed()
 signal streak_changed(streak: int)
+signal bonus_changed(ready: bool, active: bool)
 
 # --- level curve -------------------------------------------------------------
 
 ## threshold(L) = BASE * (GROWTH^(L-1) - 1) / (GROWTH - 1)
-## L2 at 1,000, L6 at ~10k, L12 at ~75k. Escalating so the early levels land
-## fast and the tail stays long.
+## L2 at 1,000, L6 at ~7k, L12 at ~29k, L25 at ~184k, L50 at ~6.3M.
+##
+## GROWTH was 1.35, which put the top power tiers past any reachable score --
+## L45 needed 1.55 BILLION lifetime points against maybe 1-20k a run, so four
+## of the five tiers and the 12x12 board were decoration. At 1.16 the same gate
+## levels land at roughly a week, a fortnight, five months and ten months of
+## committed play, and a strong player gets there sooner.
+##
+## Retuning this re-levels every existing save on the next load, which is what
+## _catch_up_rewards() exists to survive -- read its note before touching it.
 const LEVEL_BASE := 1000.0
-const LEVEL_GROWTH := 1.35
+const LEVEL_GROWTH := 1.16
 const MAX_LEVEL := 60
 
 ## What each level hands over. Levels absent from this table give nothing but
@@ -66,7 +75,11 @@ const REWARDS := {
 	47: {"power": 1},
 	48: {"power": 1},
 	50: {"power": 1},
-	55: {"power": 1},
+	# 52, not 55. Tier 5 opens at L50; on the retuned curve L55 is 630 days of
+	# committed play against L50's 300, so the tier's second power arrived more
+	# than twice as late as the tier itself. Every other tier completes within
+	# ~80 days of opening -- this now does too.
+	52: {"power": 1},
 }
 
 # --- powers ------------------------------------------------------------------
@@ -132,6 +145,14 @@ const COST := {
 	Blocks.Power.REWIND: 7,
 }
 
+## A doubled-XP session, earned two ways: by coming back three days running, or
+## by playing three times in one day. Both bank the SAME single bonus, and
+## `_bonus_ready` is a bool rather than a count, so hitting both -- or hitting
+## one repeatedly -- can never stack them into a farm.
+const STREAK_FOR_BONUS := 3
+const PLAYS_FOR_BONUS := 3
+const BONUS_XP_MULTIPLIER := 2
+
 const BASE_MAX_CHARGE := 10
 
 ## Charge paid by a clear, indexed by combo - 1. A combo of 1 pays nothing:
@@ -154,6 +175,14 @@ var _days_played := 0
 ## The highest level the player has actually been shown. The profile compares
 ## it against `level` to decide whether its XP bar should celebrate.
 var _seen_level := 1
+## Highest level whose one-off rewards have been paid. See _catch_up_rewards().
+var _rewarded_through := 1
+## Runs started today, and whether a doubled session is waiting to be spent.
+var _plays_today := 0
+var _bonus_ready := false
+## True only for the run currently being played. Not persisted: a bonus that was
+## claimed and then abandoned mid-run is spent, the same as one played out.
+var _bonus_active := false
 
 
 func _ready() -> void:
@@ -241,12 +270,34 @@ func add_score(points: int) -> int:
 	var was := _level
 	_level = level_for_score(_total_score)
 	var gained := _level - was
-	for l in range(was + 1, _level + 1):
-		_apply_reward(l)
+	_catch_up_rewards()
 	_save()
 	if gained > 0:
 		level_changed.emit(_level, _pending_unlocks)
 	return gained
+
+
+## Grants the rewards for every level reached but not yet paid out, and records
+## how far the ledger has been settled.
+##
+## `_level` is derived from the score, never stored, so it can move without
+## anyone having gained anything -- most obviously if LEVEL_GROWTH is ever
+## retuned, which re-levels every existing save on the next load. Before this
+## existed, `_apply_reward` ran only from inside `add_score`'s own loop, so a
+## level that arrived any other way silently skipped its grants: the player
+## landed on an open tier with nothing banked to spend on it, and those powers
+## and themes were gone for good.
+##
+## `"slot"` and `"charge"` never needed this -- `loadout_size()` and
+## `max_charge()` re-derive them from `_level` on every call rather than
+## accumulating. Only `"power"` and `"theme"` are paid once.
+func _catch_up_rewards() -> bool:
+	if _rewarded_through >= _level:
+		return false
+	for l in range(_rewarded_through + 1, _level + 1):
+		_apply_reward(l)
+	_rewarded_through = _level
+	return true
 
 
 func _apply_reward(level_reached: int) -> void:
@@ -519,9 +570,72 @@ func touch_day() -> bool:
 	_streak = _streak + 1 if _last_played == yesterday else 1
 	_last_played = today
 	_days_played += 1
+	_plays_today = 0                 # a new day, so the play count starts over
+	if _streak % STREAK_FOR_BONUS == 0:
+		_grant_bonus()
 	_save()
 	streak_changed.emit(_streak)
 	return true
+
+
+# --- the doubled session ------------------------------------------------------
+
+## Counts a run as started. Every PLAYS_FOR_BONUS runs in a day earns a bonus.
+func note_run_started() -> void:
+	_ensure_loaded()
+	_plays_today += 1
+	if _plays_today % PLAYS_FOR_BONUS == 0:
+		_grant_bonus()
+	_save()
+
+
+## Banks a doubled session. Idempotent while one is already waiting -- that is
+## what stops the two triggers stacking.
+func _grant_bonus() -> void:
+	if _bonus_ready:
+		return
+	_bonus_ready = true
+	bonus_changed.emit(true, _bonus_active)
+
+
+## Spends a waiting bonus on the run about to start. Returns whether it did.
+func claim_bonus() -> bool:
+	_ensure_loaded()
+	_bonus_active = _bonus_ready
+	if _bonus_ready:
+		_bonus_ready = false
+		_save()
+	bonus_changed.emit(_bonus_ready, _bonus_active)
+	return _bonus_active
+
+
+func bonus_active() -> bool:
+	_ensure_loaded()
+	return _bonus_active
+
+
+func bonus_ready() -> bool:
+	_ensure_loaded()
+	return _bonus_ready
+
+
+## What a run's score is worth as XP right now.
+func xp_multiplier() -> int:
+	return BONUS_XP_MULTIPLIER if bonus_active() else 1
+
+
+## Runs still to play today before the next bonus lands. 0 when one is already
+## waiting. Drives the "play again" hint on the game-over panel.
+func runs_until_bonus() -> int:
+	_ensure_loaded()
+	if _bonus_ready:
+		return 0
+	return PLAYS_FOR_BONUS - (_plays_today % PLAYS_FOR_BONUS)
+
+
+func plays_today() -> int:
+	_ensure_loaded()
+	return _plays_today
 
 
 ## Thousands separators, for the screens that display these numbers.
@@ -551,9 +665,17 @@ func _ensure_loaded() -> void:
 	_streak = maxi(0, int(cfg.get_value("progress", "streak", 0)))
 	_days_played = maxi(0, int(cfg.get_value("progress", "days_played", 0)))
 	_seen_level = maxi(1, int(cfg.get_value("progress", "seen_level", 1)))
+	# Saves written before the ledger existed were settled by add_score as they
+	# went, so they owe nothing up to their level: default to -1 and let the
+	# assignment below seed it from the derived level.
+	_rewarded_through = int(cfg.get_value("progress", "rewarded_through", -1))
+	_plays_today = maxi(0, int(cfg.get_value("progress", "plays_today", 0)))
+	_bonus_ready = bool(cfg.get_value("progress", "bonus_ready", false))
 	# The level is derived, never trusted from disk -- a hand-edited file
 	# cannot grant levels the score does not support.
 	_level = level_for_score(_total_score)
+	if _rewarded_through < 0:
+		_rewarded_through = _level        # pre-ledger save: already settled
 	for p in Array(cfg.get_value("progress", "unlocked", [])):
 		var power := int(p)
 		if Blocks.ALL_POWERS.has(power) and not _unlocked.has(power):
@@ -576,6 +698,11 @@ func _ensure_loaded() -> void:
 		var id := int(t)
 		if not _themes.has(id):
 			_themes.append(id)
+	# After everything is loaded, never before: the catch-up appends themes and
+	# banks unlocks, and running it first would write into empty state and then
+	# be overwritten by the file.
+	if _catch_up_rewards():
+		_save()
 	_charge = mini(_charge, max_charge())
 
 
@@ -594,6 +721,9 @@ func _save() -> void:
 	cfg.set_value("progress", "streak", _streak)
 	cfg.set_value("progress", "days_played", _days_played)
 	cfg.set_value("progress", "seen_level", _seen_level)
+	cfg.set_value("progress", "rewarded_through", _rewarded_through)
+	cfg.set_value("progress", "plays_today", _plays_today)
+	cfg.set_value("progress", "bonus_ready", _bonus_ready)
 	cfg.save(SAVE_PATH)
 
 
@@ -612,6 +742,10 @@ func wipe() -> void:
 	_streak = 0
 	_days_played = 0
 	_seen_level = 1
+	_rewarded_through = 1
+	_plays_today = 0
+	_bonus_ready = false
+	_bonus_active = false
 	_save()
 	level_changed.emit(_level, 0)
 	charge_changed.emit(0, max_charge())
