@@ -155,11 +155,8 @@ func _shockwave(center: Vector2, extent: float, power: float) -> void:
 
 ## The bomb blast: a fireball at the bomb itself, then debris and a flash
 ## across the whole half of the board it takes out.
-## `tint` defaults to the bomb's fire. The blackhole passes its own violet --
-## without it the banner said BLACKHOLE over an unmistakably orange explosion.
-func explode_bomb(at: Vector2, region: Rect2, cell: float,
-		tint := Color(1, 0.55, 0.2)) -> void:
-	var fire := tint
+func explode_bomb(at: Vector2, region: Rect2, cell: float) -> void:
+	var fire := Color(1, 0.55, 0.2)
 
 	_core_flash(region, 2.6, fire, region.size.x >= region.size.y, 1.14)
 	_debris(region, 2.4, fire)
@@ -179,6 +176,76 @@ func explode_bomb(at: Vector2, region: Rect2, cell: float,
 	ball.scale_amount_max = cell * 0.22
 	ball.emitting = true
 	ball.finished.connect(ball.queue_free)
+
+
+## The blackhole: everything inside the disc is pulled INTO the middle. The
+## deliberate opposite of explode_bomb -- the ring closes instead of opening,
+## the debris accelerates inward instead of out, and a dark core swallows the
+## middle. Reusing the bomb's blast here read as an orange explosion with the
+## wrong word over it.
+func implode(centre: Vector2, reach: float, cell: float, tint: Color) -> void:
+	# The rim, closing. _shockwave is this in reverse.
+	var rim := Ring.new()
+	rim.position = centre
+	rim.radius = reach
+	rim.thickness = 5.0
+	rim.alpha = 0.85
+	rim.tint = tint
+	add_child(rim)
+	var rt := create_tween()
+	rt.set_parallel(true)
+	rt.tween_property(rim, "radius", 0.0, 0.42) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	rt.tween_property(rim, "alpha", 0.0, 0.42).set_ease(Tween.EASE_IN)
+	rt.chain().tween_callback(rim.queue_free)
+
+	# Debris going down the drain. A negative radial acceleration pulls each
+	# particle toward the emitter's own origin, and the orbit velocity makes it
+	# curve in rather than fall straight, which is what sells the spiral.
+	# Damping has to be cleared: the source scene has plenty, and it would
+	# cancel the pull before anything reached the middle.
+	var swirl: CPUParticles2D = ComboBurst.instantiate()
+	add_child(swirl)
+	swirl.position = centre
+	swirl.emission_shape = CPUParticles2D.EMISSION_SHAPE_SPHERE
+	swirl.emission_sphere_radius = reach
+	swirl.amount = 150
+	swirl.lifetime = 0.5
+	swirl.explosiveness = 1.0
+	swirl.lifetime_randomness = 0.25
+	swirl.direction = Vector2.ZERO
+	swirl.spread = 180.0
+	swirl.gravity = Vector2.ZERO
+	swirl.initial_velocity_min = 0.0
+	swirl.initial_velocity_max = cell * 0.4
+	swirl.damping_min = 0.0
+	swirl.damping_max = 0.0
+	swirl.radial_accel_min = -cell * 26.0
+	swirl.radial_accel_max = -cell * 15.0
+	swirl.orbit_velocity_min = 0.7
+	swirl.orbit_velocity_max = 1.6
+	swirl.scale_amount_min = cell * 0.10
+	swirl.scale_amount_max = cell * 0.28
+	swirl.color = tint
+	swirl.one_shot = true
+	swirl.emitting = true
+	swirl.finished.connect(swirl.queue_free)
+
+	# The core: opens as the debris arrives, then collapses to nothing.
+	var core := Ring.new()
+	core.position = centre
+	core.filled = true
+	core.tint = Color(0.04, 0.02, 0.07)
+	core.alpha = 0.0
+	add_child(core)
+	var ct := create_tween()
+	ct.tween_property(core, "radius", reach * 0.34, 0.26) \
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	ct.parallel().tween_property(core, "alpha", 0.92, 0.20)
+	ct.tween_property(core, "radius", 0.0, 0.24) \
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_BACK)
+	ct.parallel().tween_property(core, "alpha", 0.0, 0.24).set_delay(0.10)
+	ct.tween_callback(core.queue_free)
 
 
 ## Twin beams down the row and column a laser burned through.
@@ -505,8 +572,15 @@ class Ring extends Node2D:
 			alpha = value
 			queue_redraw()
 	var thickness := 4.0
+	## Defaults keep every existing caller drawing the same white outline.
+	var tint := Color(1, 1, 1)
+	var filled := false
 
 	func _draw() -> void:
 		if radius <= 0.0:
 			return
-		draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1, 1, 1, alpha), thickness, true)
+		var c := Color(tint.r, tint.g, tint.b, alpha)
+		if filled:
+			draw_circle(Vector2.ZERO, radius, c)
+		else:
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, c, thickness, true)

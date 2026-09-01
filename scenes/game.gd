@@ -703,22 +703,22 @@ func _on_diagonal_fired(at: Vector2i, cleared: int, points: int, _level := 1) ->
 	_sync_tray()
 
 
-## The blackhole. A shockwave sized to the disc rather than a directional
-## blast, so it reads as a collapse inward instead of an explosion outward.
+## The blackhole. An implosion sized to the disc it actually cleared, so the
+## effect traces the cells that went rather than a generic blast.
 func _on_blackhole_fired(at: Vector2i, radius: float, cleared: int, points: int) -> void:
-	Audio.play("bomb", 0.75)
+	Audio.play("bomb", 0.6)
 	var cell: float = _board.cell_size()
 	var centre := (Vector2(at) + Vector2(0.5, 0.5)) * cell
 	var tint: Color = Blocks.power_color(Blocks.Power.BLACKHOLE)
 	var reach: float = (radius + 0.5) * cell
-	_effects.explode_bomb(centre, Rect2(centre - Vector2(reach, reach),
-		Vector2(reach, reach) * 2.0), cell, tint)
+	_effects.implode(centre, reach, cell, tint)
 	_overlay.combo_banner_text("BLACKHOLE!", tint)
 	if points > 0:
 		_overlay.points_popup("+%d" % points,
 			get_viewport_rect().size * Vector2(0.5, 0.60), Color(0.945, 0.941, 1), false)
 	print_verbose("blackhole r=%.1f cleared %d for %d" % [radius, cleared, points])
-	_shake = 22.0
+	# Gentler than the bomb: the board is being pulled in, not blown apart.
+	_shake = 10.0
 	Haptics.blast()
 	_sync_tray()
 
