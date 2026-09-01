@@ -53,6 +53,7 @@ BLAST"
 horizontal_alignment = 1
 
 [node name="Tagline" type="Label" parent="Center/Content" unique_id=814437425]
+unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 36
