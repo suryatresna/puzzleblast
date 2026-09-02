@@ -102,6 +102,14 @@ down.
 
 ## Input
 
+- **`_drag_index` is shared between the tray and the strip**, so it never means
+  "a tray slot" on its own. Anything keyed on it must test `_drag_from` too —
+  `_sync_tray` did not, and a power cast from strip slot N blanked *tray* slot
+  N, leaving a card that looked gone but still dragged.
+- **The tray re-syncs at the end of a drag, after the state is cleared.** The
+  drop handlers run while the drag is still current, so a refused drop synced
+  with its own index still set and left the slot it had just restored looking
+  empty.
 - **`_begin_drag` must set `_drag_from`.** `_update_drag` returns immediately
   while it is `NONE` and `_end_drag` dispatches on it, so leaving it unset kills
   every placement and every power cast — silently. This shipped once and

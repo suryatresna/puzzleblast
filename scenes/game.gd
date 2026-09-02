@@ -359,7 +359,14 @@ func _sync_tray() -> void:
 		var view: Control = _slots[i].get_node("View")
 		# The card being dragged is drawn under the pointer, so its slot shows
 		# empty rather than a duplicate sitting in the tray.
-		var piece: Dictionary = {} if i == _drag_index else _tray[i]
+		#
+		# _drag_from matters as much as the index. _drag_index is shared between
+		# the tray and the strip, so testing the index alone blanked tray slot N
+		# whenever a POWER was cast from strip slot N -- a card that looked gone
+		# but still dragged, because _tray[N] was untouched. _sync_powers has
+		# always tested both; this did not.
+		var carried: bool = _drag_from == DragFrom.TRAY and i == _drag_index
+		var piece: Dictionary = {} if carried else _tray[i]
 		view.piece = piece
 		# Grey out anything that no longer fits anywhere, so the player can see
 		# why the run is about to end.
@@ -503,7 +510,16 @@ func _end_drag(_pointer: Vector2) -> void:
 		DragFrom.TRAY: _drop_tray_piece()
 		DragFrom.POWER: _fire_power()
 	_drag_from = DragFrom.NONE
+	# Cleared with the source, not left behind. A stale index is what let a
+	# finished power cast keep blanking a tray slot.
+	_drag_index = -1
 	_drag_view.hide()
+	# Re-sync AFTER the drag state is cleared. The handlers above sync while the
+	# drag is still current -- a refused drop calls _sync_tray() with its own
+	# index still set, so the slot it just returned the card to rendered empty
+	# and stayed that way until the next pick-up. The tray must always end a
+	# drag showing what _tray actually holds.
+	_sync_tray()
 	_board.preview_cells = []
 	_board.queue_redraw()
 	_check_game_over()
