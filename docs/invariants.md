@@ -122,6 +122,24 @@ down.
   survived a whole feature's worth of tests, because every test in this repo
   drives `_board.place()` or `_fire_power()` directly. **Keep the `_input` test.**
 
+## Scrolling
+
+- **A `ScrollContainer` with `mouse_filter = 2` (IGNORE) receives nothing.** Not
+  the wheel, not a drag, not a pan. It still lays out and still shows a
+  scrollbar, so it looks entirely correct and simply will not move. Both
+  `profile` and `how_to_play` shipped this way.
+- **`MOUSE_FILTER_STOP` anywhere between a touch and the ScrollContainer breaks
+  the scroll**, because STOP means "do not propagate to my parent" whether or
+  not the event was used. `Button` and `PanelContainer` both default to STOP,
+  so the profile's power cards -- a Button inside a PanelContainer, tiling the
+  whole list -- left a phone with nowhere to grab. Anything scrollable that a
+  finger can land on must be PASS or IGNORE the whole way up.
+- **This cannot be tested by synthesising touch.** Neither `push_input` nor
+  `Input.parse_input_event` drives `ScrollContainer`'s touch-drag path, even
+  with `Input.set_emulate_touch_from_mouse(true)` -- a *bare* container with
+  plain labels does not scroll either, so a failure there proves nothing. Test
+  the wheel, which does route, and assert the filter chain directly.
+
 ## Other
 
 - **`Modes.current` must be set before routing to the play screen.** `game.gd`

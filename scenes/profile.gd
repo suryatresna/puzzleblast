@@ -20,11 +20,19 @@ const BLURB_FONT := 26
 const TIER_FONT := 28
 const ICON := 96
 
+## Pixels of travel that separate a tap from a scroll, at 1080px wide.
+const TAP_SLOP := 18
+
 var _xp_tween: Tween
 
 
 func _ready() -> void:
 	super()
+	# A finger has to travel this far before the list scrolls rather than the
+	# card under it being tapped. Without it, the wobble in a tap would nudge
+	# the tree and a card release would still land, so a tap would both scroll
+	# and equip.
+	%Scroll.scroll_deadzone = TAP_SLOP
 	Progress.level_changed.connect(func(_l: int, _p: int) -> void: _rebuild())
 	Progress.loadout_changed.connect(_rebuild)
 	Progress.power_level_changed.connect(func(_p: int, _l: int) -> void: _rebuild())
@@ -162,6 +170,9 @@ func _card(power: int, pending: int, tier_open := true, gate := 1) -> void:
 
 	var card := PanelContainer.new()
 	card.theme_type_variation = &"ModeCardFeatured" if equipped else &"ModeCard"
+	# PanelContainer defaults to STOP, and STOP anywhere between the touch and
+	# the ScrollContainer breaks the scroll -- see the hit target below.
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	%Powers.add_child(card)
 
 	var row := HBoxContainer.new()
@@ -170,6 +181,7 @@ func _card(power: int, pending: int, tier_open := true, gate := 1) -> void:
 
 	# The tile renders itself from the piece, exactly as the tray and strip do.
 	var icon := PieceView.new()
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE   # decoration, not a target
 	icon.custom_minimum_size = Vector2(ICON, ICON)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.piece = Blocks.power_piece(power)
@@ -221,6 +233,12 @@ func _card(power: int, pending: int, tier_open := true, gate := 1) -> void:
 	hit.flat = true
 	hit.focus_mode = Control.FOCUS_NONE
 	hit.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# PASS, not the Button default of STOP. STOP means "do not propagate to my
+	# parent" -- so a touch landing on a card never reached the ScrollContainer
+	# above it, and since the cards tile the whole list there was nowhere left
+	# to grab. The screen simply would not scroll on a phone. PASS keeps the
+	# button clickable and lets the same touch drive the scroll.
+	hit.mouse_filter = Control.MOUSE_FILTER_PASS
 	hit.pressed.connect(_tapped.bind(power))
 	card.add_child(hit)
 
