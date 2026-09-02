@@ -528,6 +528,12 @@ func _end_drag(_pointer: Vector2) -> void:
 	# and stayed that way until the next pick-up. The tray must always end a
 	# drag showing what _tray actually holds.
 	_sync_tray()
+	# And the strip, for exactly the same reason. Every _sync_powers() inside
+	# _fire_power runs while the drag is still current, so the slot just used
+	# draws as empty -- including on the free-cancel paths, where nothing else
+	# fires afterwards to put it back. The socket then sat blank while the
+	# power was still equipped, still affordable and still draggable.
+	_sync_powers()
 	_board.preview_cells = []
 	_board.queue_redraw()
 	_check_game_over()
@@ -923,10 +929,10 @@ func _fire_power() -> void:
 ## Re-deals the tray with pieces the board can actually take. Returns false
 ## when nothing in the catalogue fits at all -- which is exactly the board
 ## where a shuffle would be worthless, so the charge is handed back.
-func _shuffle_tray(level: int) -> bool:
-	var lvl: int = clampi(level, 1, SHUFFLE_FITTING_BY_LEVEL.size())
-	var guaranteed: int = int(SHUFFLE_FITTING_BY_LEVEL[lvl - 1])
-
+## Every catalogue piece small enough for a shuffle that fits the board as it
+## stands. Empty means a shuffle would be worthless, which is both why the cast
+## refunds and why the run is over.
+func _shuffle_candidates() -> Array:
 	var fitting: Array = []
 	for piece: Dictionary in Blocks.catalogue():
 		var span: Vector2i = piece["size"]
@@ -934,6 +940,14 @@ func _shuffle_tray(level: int) -> bool:
 			continue
 		if _board.has_any_move([piece]):
 			fitting.append(piece)
+	return fitting
+
+
+func _shuffle_tray(level: int) -> bool:
+	var lvl: int = clampi(level, 1, SHUFFLE_FITTING_BY_LEVEL.size())
+	var guaranteed: int = int(SHUFFLE_FITTING_BY_LEVEL[lvl - 1])
+
+	var fitting: Array = _shuffle_candidates()
 	if fitting.is_empty():
 		return false
 
@@ -988,11 +1002,53 @@ func _on_earthquake_shook(moved: Array, nudges: int) -> void:
 ## A run is only over when neither the tray nor the strip can do anything. A
 ## board with no legal card but a charged bomb in the bank is still playable.
 func _check_game_over() -> void:
+	# An empty tray is a transient, never a position. has_any_move([]) is
+	# false whatever the board looks like, so without this a spent tray reads
+	# as a loss on a board with the whole grid free.
+	if _tray_spent():
+		_refill_tray()
 	if _board.has_any_move(_remaining_pieces()):
 		return
-	if _powers_enabled and Progress.has_affordable():
+	if _powers_enabled and _has_usable_power():
 		return
 	_board.declare_game_over()
+
+
+## Whether anything in the strip could actually be fired right now.
+##
+## Deliberately stronger than `Progress.has_affordable()`, which only asks
+## whether the player can PAY. A power they can pay for but cannot aim is not a
+## move, and treating it as one leaves the run alive on a board where nothing
+## can happen -- the player is left staring at a dead board that will not end.
+## Rewind with nothing recorded and Shuffle with nothing that fits are the two
+## that bite: both hand the charge straight back, so the player can tap them
+## forever without the position changing.
+func _has_usable_power() -> bool:
+	# The free tutorial bomb costs nothing and lands anywhere in bounds.
+	if _tutorial_slot >= 0:
+		return true
+	for i in Progress.loadout_size():
+		var power: int = Progress.equipped(i)
+		if power == Blocks.Power.NONE or not Progress.can_afford(power):
+			continue
+		if _power_usable(power):
+			return true
+	return false
+
+
+## Can this one power do anything to the board as it stands?
+func _power_usable(power: int) -> bool:
+	match power:
+		Blocks.Power.REWIND:
+			# _rewind() refuses and refunds when there is nothing recorded.
+			return not _history.is_empty()
+		Blocks.Power.SHUFFLE:
+			# _shuffle_tray() refuses and refunds when nothing in the
+			# catalogue fits, which is exactly a board it cannot rescue.
+			return not _shuffle_candidates().is_empty()
+		_:
+			return _board.can_target_anywhere(
+				Blocks.power_piece(power)["cells"], power)
 
 
 # --- board reactions ---------------------------------------------------------

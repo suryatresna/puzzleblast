@@ -319,6 +319,18 @@ func can_target(cells: Array, origin: Vector2i, power := Blocks.Power.NONE) -> b
 	return true
 
 
+## True when `power` has at least one legal target on the board as it stands.
+## `game.gd` needs this to end a run honestly: affording a power is not the
+## same as being able to fire it, and a power that can never land keeps a dead
+## board alive forever.
+func can_target_anywhere(cells: Array, power := Blocks.Power.NONE) -> bool:
+	for y in grid:
+		for x in grid:
+			if can_target(cells, Vector2i(x, y), power):
+				return true
+	return false
+
+
 ## Bounds only, without the occupancy test.
 func _in_bounds(cells: Array, origin: Vector2i) -> bool:
 	for c: Vector2i in cells:

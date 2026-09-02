@@ -61,6 +61,22 @@ inside `blocks.gd` — miss one form and the grep looks clean.
   Spending records a use and can level the power mid-shot, and a drop the board
   refuses must not bill the player.
 
+## Ending a run
+
+- **An empty tray is a transient, never a position.** `has_any_move([])` is
+  false whatever the board looks like, so a spent tray reads as a loss even on
+  a completely free grid. `_check_game_over` refills before it decides.
+- **Affording a power is not the same as being able to fire one.** A power the
+  player can pay for but cannot aim is not a move, and counting it as one keeps
+  a dead board alive with nothing that can happen. Rewind with nothing recorded
+  and Shuffle with nothing that fits are the two that bite: both refund, so the
+  player can tap them forever without the position changing. `_check_game_over`
+  asks `_has_usable_power()`, not `Progress.has_affordable()`.
+- **A blank-looking slot is not an empty one.** The strip renders from
+  `Progress.equipped()`, so a socket that draws empty can still be holding an
+  affordable power -- which the run-over test will rightly count. A rendering
+  bug here looks exactly like a game-over bug.
+
 ## Board
 
 - **`can_target()` gates powers, not `can_place()`.** `MORPH` and `FIT` assign
@@ -116,6 +132,14 @@ down.
   drop handlers run while the drag is still current, so a refused drop synced
   with its own index still set and left the slot it had just restored looking
   empty.
+- **Both the tray AND the strip must re-sync at the end of a drag.** Every
+  `_sync_powers()` inside `_fire_power` runs while the drag is still current,
+  so the slot just used draws as empty -- including the free-cancel paths
+  (dropped off the board, rewind with no history, shuffle with nothing that
+  fits), where no charge changes and so nothing fires afterwards to put it
+  back. The socket then sits blank while the power is still equipped, still
+  affordable and still draggable. This is the same defect as the tray one
+  above; fixing only the tray left the strip broken.
 - **`_begin_drag` must set `_drag_from`.** `_update_drag` returns immediately
   while it is `NONE` and `_end_drag` dispatches on it, so leaving it unset kills
   every placement and every power cast — silently. This shipped once and
