@@ -108,6 +108,8 @@ var _xp_rolling := false
 func _ready() -> void:
 	_slots = [%Slot0, %Slot1, %Slot2, %Slot3, %Slot4]
 	_power_slots = [%PowerSlot0, %PowerSlot1, %PowerSlot2]
+	for slot: Control in _power_slots:
+		_add_charge_motes(slot)
 	Progress.charge_changed.connect(func(_c: int, _m: int) -> void: _sync_powers())
 	Progress.loadout_changed.connect(_sync_powers)
 
@@ -259,9 +261,15 @@ func _sync_powers() -> void:
 			label.text = "FREE" if showing else ""
 			label.add_theme_color_override("font_outline_color",
 				Themes.value("ink", Color.BLACK))
+			# The free bomb is always castable, so it is always lit.
+			_tune_charge_motes(slot, showing,
+				Blocks.power_color(Progress.TUTORIAL_POWER).lightened(0.25))
 			continue
 		view.piece = Blocks.power_piece(power) if showing else {}
-		view.dimmed = showing and not Progress.can_afford(power)
+		var ready: bool = showing and Progress.can_afford(power)
+		view.dimmed = showing and not ready
+		_tune_charge_motes(slot, ready,
+			Blocks.power_color(power).lightened(0.25) if held else Color.WHITE)
 		label.text = "L%d" % Progress.level_of(power) if showing else ""
 		label.add_theme_color_override("font_outline_color",
 			Themes.value("ink", Color.BLACK))
@@ -565,6 +573,10 @@ const SHUFFLE_BIG_LEVEL := 4
 const SHUFFLE_MAX_SPAN := 3
 
 ## The doubled-XP session: gold, and re-lit on this cadence for the whole run.
+## Reused for the per-slot charge motes; it is a plain CPUParticles2D and every
+## property that matters is set in code.
+const ChargeMotes := preload("res://ui/effects/place_puff.tscn")
+
 const BONUS_TINT := Color(1.0, 0.82, 0.25)
 const BONUS_PULSE_SECONDS := 3.5
 
@@ -784,6 +796,63 @@ func _coach() -> void:
 	}, _last_hint)
 	_last_hint = int(said["id"])
 	%Hint.text = String(said["text"])
+
+
+## A slow drift of motes behind a power that is ready to fire.
+##
+## "Ready" was only ever signalled by the tile NOT being dimmed, which is a
+## weak thing to read at a glance mid-run -- the player has to remember what an
+## undimmed tile means. Motes say it without being read.
+##
+## Added as the slot's FIRST child so the panel's own background is behind them
+## and the piece view in front, and left running rather than one-shot: the state
+## it reports is a state, not an event.
+func _add_charge_motes(slot: Control) -> void:
+	var motes: CPUParticles2D = ChargeMotes.instantiate()
+	motes.name = "ChargeMotes"
+	slot.add_child(motes)
+	slot.move_child(motes, 0)
+	motes.emitting = false
+	motes.one_shot = false
+	motes.explosiveness = 0.0
+	motes.randomness = 0.6
+	motes.amount = 30
+	motes.lifetime = 1.5
+	motes.direction = Vector2.UP
+	motes.spread = 18.0
+	motes.gravity = Vector2.ZERO
+	motes.initial_velocity_min = 14.0
+	motes.initial_velocity_max = 46.0
+	motes.damping_min = 0.0
+	motes.damping_max = 4.0
+	motes.scale_amount_min = 7.0
+	motes.scale_amount_max = 16.0
+	# The source scene shrinks every particle to nothing over its life. At this
+	# size that left the motes invisible -- a single pixel by the time they had
+	# cleared the tile. The colour ramp still fades them out, which is enough.
+	motes.scale_amount_curve = null
+
+
+## Points the slot's motes at the right colour and turns them on only while the
+## power can actually be cast.
+func _tune_charge_motes(slot: Control, ready: bool, tint: Color) -> void:
+	var motes: CPUParticles2D = slot.get_node_or_null("ChargeMotes")
+	if motes == null:
+		return
+	# The slot is laid out by its container, so read the size each sync rather
+	# than assuming the scene's minimum.
+	var box: Vector2 = slot.size
+	# Emitted WIDER than the tile, on purpose. The piece view is an opaque
+	# nine-patch filling the slot, so anything emitted inside it is hidden --
+	# only what escapes the edges is ever seen. Spilling past the sides turns
+	# that from a defect into the effect: the tile looks like it is giving off
+	# light rather than containing it.
+	motes.position = box * 0.5
+	motes.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	motes.emission_rect_extents = Vector2(maxf(box.x * 0.66, 1.0),
+		maxf(box.y * 0.42, 1.0))
+	motes.color = tint
+	motes.emitting = ready
 
 
 ## Which slot shows the free bomb: the first one that is visible and empty.

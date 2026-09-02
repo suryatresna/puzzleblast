@@ -85,6 +85,12 @@ inside `blocks.gd` — miss one form and the grep looks clean.
 - **Anything caching theme values rebuilds on `theme_changed`.**
 - **`%Effects` is board-local; `%OverlayEffects` is screen-space.** Picking the
   wrong one puts the effect in the wrong place, or under the game-over panel.
+- **A particle emitter behind an opaque control is invisible.** The power
+  slot's piece view is a nine-patch filling the slot, so the charge motes are
+  emitted *wider* than the tile on purpose -- only what escapes the edges is
+  ever seen. `place_puff.tscn` also carries a `scale_amount_curve` that shrinks
+  each particle to nothing; reused at slot size that leaves a single pixel.
+  Both faults pass every assertion. Capture it.
 - **Check a light backdrop against the HUD.** The top gradient stop lerps 85% of
   the way to the sky colour, and the score is cream. Thunder's first cloud
   measured within six luminance values of the text behind it and the score
