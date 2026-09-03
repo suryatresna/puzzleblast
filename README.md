@@ -4,9 +4,13 @@ A drag-and-drop block puzzle for Android and iOS, built with **Godot 4.7.2**.
 
 Five cards sit in a tray at the bottom of the screen. Drag one onto the board; fill any row or column and it clears. The tray refills once all five are spent, and the run ends when nothing left in your hand fits anywhere — unless you have a power charged.
 
-| Menu | Line clear | Bomb | Leaderboard |
+| Menu | Powers charged | Blackhole | Bomb |
 |:---:|:---:|:---:|:---:|
-| ![Main menu](screenshots/menu.png) | ![Clearing four lines at once](screenshots/line-clear.png) | ![Bomb clearing the bottom half](screenshots/bomb.png) | ![Leaderboard](screenshots/leaderboard.png) |
+| ![Main menu](screenshots/menu.png) | ![The power strip with Bomb, Blackhole and Laser charged and ready](screenshots/powers.png) | ![Blackhole imploding the middle of the board](screenshots/blackhole.png) | ![Bomb detonating](screenshots/bomb.png) |
+
+| Line clear | The skill tree | Leaderboard |
+|:---:|:---:|:---:|
+| ![Two lines clearing at once for 1,800](screenshots/line-clear.png) | ![The power skill tree on the Profile screen](screenshots/skill-tree.png) | ![Leaderboard](screenshots/leaderboard.png) |
 
 ## How it plays
 
