@@ -188,9 +188,16 @@ ffmpeg -y -framerate 30 -i /tmp/clip/f%05d.png -ss 0.83 -i /tmp/discard/f.wav \
 **Every iPhone preview slot is 886x1920**, whatever the screenshot size for
 that device is — 15 to 30 seconds, 30fps, H.264 High Profile 4.0.
 
-The `-ss 0.83` is not cosmetic. Recording starts after the scene has settled,
-but the WAV covers the whole run, so without the offset the audio leads the
-picture by that much for the entire clip.
+The `-ss` offset is not cosmetic. Recording starts after the scene has
+settled, but the WAV covers the whole run, so without it the audio leads the
+picture for the entire clip. Measure it rather than assume it — it is simply
+the WAV's length minus the frame count over 30.
+
+Blackhole and bomb are cast at **level 5** in the clip, and the board is packed
+to about 0.7 before each. Both matter: a maxed blackhole reaches radius 4.0
+against 2.5 at level 3, and a maxed bomb takes 7x7, the row *and* half the
+board — but a wide blast over a sparse board destroys nothing much and reads
+as a small one.
 
 **Grab frames from the hold loop, not from a `frame_post_draw` handler.**
 Reading the viewport texture inside that handler makes it miss emissions: a

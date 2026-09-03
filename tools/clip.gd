@@ -83,8 +83,14 @@ func _seed() -> void:
 	Progress._pending_unlocks = 0
 	for row: Dictionary in Coach.LADDER:
 		Progress.mark_hint_seen(int(row["id"]))
-	for p: int in [Blocks.Power.LASER, Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]:
-		Progress._uses[p] = Progress.USES_FOR_LEVEL[2]
+	# Laser at 3, but blackhole and bomb MAXED. The step is the whole point of
+	# showing them: blackhole goes from radius 2.5 to 4.0, roughly 21 cells to
+	# 49, and the bomb from "5x5 and the row" to "7x7, the row AND half the
+	# board". A level 3 cast reads as a tidy hole; a level 5 one clears the
+	# screen, which is what a preview is for.
+	Progress._uses[Blocks.Power.LASER] = Progress.USES_FOR_LEVEL[2]
+	for p: int in [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]:
+		Progress._uses[p] = Progress.USES_FOR_LEVEL[Progress.USES_FOR_LEVEL.size() - 1]
 	Progress._charge = 0
 
 
@@ -194,15 +200,17 @@ func _run() -> void:
 	await _cast(0, Vector2i(mid + 1, mid))          # LASER
 	await _hold(2.4)
 
-	_scatter(0.46)
-	await _hold(0.5)
-	await _cast(1, Vector2i(mid, mid))              # BLACKHOLE
-	await _hold(2.8)
-
-	_scatter(0.50)
-	await _hold(0.5)
-	await _cast(2, Vector2i(mid, mid + 1))          # BOMB
+	# Packed tighter for the two maxed casts: a wide blast over a sparse board
+	# destroys nothing much and reads as a small one.
+	_scatter(0.66)
+	await _hold(0.6)
+	await _cast(1, Vector2i(mid, mid))              # BLACKHOLE, level 5
 	await _hold(3.0)
+
+	_scatter(0.72)
+	await _hold(0.6)
+	await _cast(2, Vector2i(mid, mid + 1))          # BOMB, level 5
+	await _hold(3.2)
 
 	await _hold(1.2)
 	_recording = false
