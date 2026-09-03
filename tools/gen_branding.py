@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Generate the boot splash and app icons from the title mark.
 
-The mark is four tiles in a square with a different bottom-right one -- the
+The mark is four tiles in a square with the bottom-right one tilted -- the
 pixel form of `ui/logo.svg` -- and the same layout the game draws at runtime in
-`ui/widgets/logo_mark.gd`. Keep the two CELLS tables in step. These are baked images rather
+`ui/widgets/logo_mark.gd`. Keep the two CELLS tables, and the tilt, in step. These are baked images rather
 than runtime draws because Godot needs a file for `boot_splash/image` and
 `config/icon`, so they are pinned to the SHIPPED palette (Themes.ACTIVE =
 PIXEL_DARK). Re-run after changing that.
@@ -21,6 +21,7 @@ at `side // 8` two tiles came to a quarter of the width and looked lost.
 
 Run:  python3 tools/gen_branding.py
 """
+import math
 import os
 from PIL import Image
 
@@ -39,9 +40,14 @@ TINTS = ["#8fa9a1", "#a8842f", "#d0603a", "#e8bc61"]
 BG = "#17120f"          # Pixel Dark BG BASE
 
 # Grid position -> palette index, matching logo_mark.gd
-CELLS = [((0, 0), 3), ((1, 0), 3),
-         ((0, 1), 3), ((1, 1), 0)]
+CELLS = [((0, 0), 3), ((1, 0), 2),
+         ((0, 1), 1), ((1, 1), 0)]
 COLS, ROWS = 2, 2
+# The one tile that sits off the grid. A square turned this far grows about
+# 10.6% of its width on each side and the gap leaves 12.5%, so it leans into
+# the gap without touching its neighbours -- the margin logo.svg relies on too.
+TILTED = (1, 1)
+TILT_DEG = 14
 
 
 def hx(s):
@@ -60,17 +66,32 @@ def tint(img, c):
 
 
 def mark(cell):
-    """The mark at `cell` px per tile, on a transparent ground."""
+    """The mark at `cell` px per tile, on a transparent ground.
+
+    The canvas carries a `lean` margin so the tilted tile is not clipped at
+    the right and bottom edges. Rotation happens AFTER the tile is scaled up,
+    so each source pixel is already a large block and the turned edge steps at
+    output resolution rather than shredding the 32px art.
+    """
     gap = max(1, cell // 8)
     step = cell + gap
-    w = COLS * cell + (COLS - 1) * gap
-    h = ROWS * cell + (ROWS - 1) * gap
+    lean = math.ceil((math.cos(math.radians(TILT_DEG))
+                      + math.sin(math.radians(TILT_DEG)) - 1) / 2 * cell)
+    w = COLS * cell + (COLS - 1) * gap + lean
+    h = ROWS * cell + (ROWS - 1) * gap + lean
     src = Image.open(os.path.abspath(TILE)).convert("RGBA")
     tiles = {i: tint(src.resize((cell, cell), Image.NEAREST), hx(TINTS[i]))
              for i in set(i for _, i in CELLS)}
     out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     for (cx, cy), i in CELLS:
-        out.alpha_composite(tiles[i], (cx * step, cy * step))
+        t = tiles[i]
+        x, y = cx * step, cy * step
+        if (cx, cy) == TILTED:
+            # Negative: PIL turns counter-clockwise, SVG and Godot clockwise.
+            t = t.rotate(-TILT_DEG, resample=Image.NEAREST, expand=True)
+            x -= (t.width - cell) // 2
+            y -= (t.height - cell) // 2
+        out.alpha_composite(t, (x, y))
     return out
 
 
