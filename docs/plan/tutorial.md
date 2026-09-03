@@ -104,10 +104,16 @@ and the bomb is the right one: **half the board vanishing is unmistakable**,
 where Fit or Collapse are subtle enough that a first-timer may not notice
 anything happened.
 
-**But the bomb is unreachable.** It sits in tier 5, gated at level 50 —
-8,995,387 lifetime score, roughly 300 days of committed play. Tier 1 (Fit,
-Collapse) is what a new player actually owns. So the tutorial cannot use the
-bomb the player has; it has to hand them one.
+**But the bomb was unreachable when this was written.** It sat in tier 5,
+gated at level 50 — 8,995,387 lifetime score, roughly 300 days of committed
+play — so the tutorial could not use the bomb the player had and had to hand
+them one.
+
+> **Since superseded:** the bomb now opens the tree, in tier 1 beside Fit and
+> Collapse. The free bomb still ships and still earns its keep — a brand-new
+> player owns nothing at all until level 2 — but it is now a preview of a
+> power they can actually go and unlock, rather than a one-off glimpse of
+> something 300 days away.
 
 **A one-off free bomb, outside the tree and outside the economy.** Granted the
 first time the power strip appears (level 2, when the first loadout slot
@@ -129,6 +135,11 @@ is one they have to choose.
 cost and the bomb is the most expensive power in the game at 8. Reordering it
 would either break that ordering or misprice the bomb. A scripted gift is
 honest: it is a lesson, not a reward.
+
+> **This is the call that was later reversed.** The bomb was moved to tier 1
+> anyway, on the view that legibility beats cost ordering at the front of the
+> tree — the same exception Rewind already had. The price does the gating
+> instead: 8 charge is most of a level-1 bank.
 
 **Implementation.** `Progress` gains `_tutorial_power_used: bool` (persisted
 beside `seen_hints`) with `tutorial_power_pending()` and `use_tutorial_power()`.

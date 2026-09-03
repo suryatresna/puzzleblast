@@ -1591,6 +1591,11 @@ func _cancel_drag() -> void:
 func _restart() -> void:
 	%PausePanel.hide()
 	%GameOverPanel.hide()
+	# The game-over stinger is deliberately the end of the line: nothing
+	# follows it, and the bed only restarts on a scene change. Playing again
+	# does NOT change scene, so without this the whole next run was silent.
+	# No-op when the bed is already running, so the first run is unaffected.
+	Audio.play_music()
 	_show_level_up(0)
 	_cancel_drag()
 	_kill_deal_tweens()

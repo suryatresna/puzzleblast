@@ -106,7 +106,15 @@ const POWER_MAX_LEVEL := {
 ##
 ## `level` 1 means no gate: the first tier is what a new player chooses from.
 const POWER_TIERS := [
-	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH]},
+	# The bomb breaks the cost ordering the other way from Rewind: at 8 it is
+	# the dearest power in the game, so by cost it belongs in tier 5. It opens
+	# the tree instead because it is the one power a new player cannot
+	# misread -- half the board vanishing explains itself, where Fit and
+	# Collapse are subtle enough to go unnoticed. Its price is the brake: at
+	# BASE_MAX_CHARGE it takes most of a full bank, so owning it early does
+	# not mean firing it often.
+	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH,
+		Blocks.Power.BOMB]},
 	{"level": 25, "powers": [Blocks.Power.SHUFFLE, Blocks.Power.THUNDER,
 		Blocks.Power.LASER]},
 	# Rewind breaks the cost ordering on purpose: at 7 it belongs in tier 5,
@@ -116,7 +124,7 @@ const POWER_TIERS := [
 		Blocks.Power.REWIND]},
 	{"level": 45, "powers": [Blocks.Power.METEOR, Blocks.Power.TSUNAMI,
 		Blocks.Power.EARTHQUAKE]},
-	{"level": 50, "powers": [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]},
+	{"level": 50, "powers": [Blocks.Power.BLACKHOLE]},
 ]
 
 ## Cumulative uses to reach each level. Index 0 is level 1, so a freshly

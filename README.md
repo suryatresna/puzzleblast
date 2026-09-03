@@ -50,7 +50,7 @@ Each power has five levels of its own, earned by using it.
 
 ### The skill tree
 
-Powers are ordered weakest to strongest and sealed behind account levels — 1, 25, 30, 45 and 50. Reaching a level banks an unlock you choose how to spend, but a banked unlock cannot skip a gate: the order you meet the powers in is fixed, which of each tier's you take is yours.
+Powers are ordered weakest to strongest and sealed behind account levels — 1, 25, 30, 45 and 50. Two break that order deliberately: **Rewind** comes early because forgiveness is worth least to the players who would meet it last, and the **Bomb** opens the tree because it is the one power a beginner cannot misread — its 8-charge price does the gating instead. Reaching a level banks an unlock you choose how to spend, but a banked unlock cannot skip a gate: the order you meet the powers in is fixed, which of each tier's you take is yours.
 
 Levels come from **lifetime score**, so a bad run still advances something. Play three days running, or three times in one day, and the next run banks **double XP**.
 
