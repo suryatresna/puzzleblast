@@ -106,13 +106,12 @@ const POWER_MAX_LEVEL := {
 ##
 ## `level` 1 means no gate: the first tier is what a new player chooses from.
 const POWER_TIERS := [
-	# The bomb breaks the cost ordering the other way from Rewind: at 8 it is
-	# the dearest power in the game, so by cost it belongs in tier 5. It opens
-	# the tree instead because it is the one power a new player cannot
+	# The bomb opens the tree because it is the one power a new player cannot
 	# misread -- half the board vanishing explains itself, where Fit and
-	# Collapse are subtle enough to go unnoticed. Its price is the brake: at
-	# BASE_MAX_CHARGE it takes most of a full bank, so owning it early does
-	# not mean firing it often.
+	# Collapse are subtle enough to go unnoticed. Priced at 3 to match, so it
+	# is meant to be fired rather than saved for: a single 4x combo pays for
+	# one outright. That makes the tree's cost ordering hold again -- Rewind
+	# is now the only power sitting outside it.
 	{"level": 1, "powers": [Blocks.Power.FIT, Blocks.Power.MORPH,
 		Blocks.Power.BOMB]},
 	{"level": 25, "powers": [Blocks.Power.SHUFFLE, Blocks.Power.THUNDER,
@@ -133,7 +132,7 @@ const USES_FOR_LEVEL := [0, 10, 35, 85, 185]
 
 ## Charge to fire, per power. Roughly proportional to reach.
 const COST := {
-	Blocks.Power.BOMB: 8,
+	Blocks.Power.BOMB: 3,
 	Blocks.Power.MORPH: 4,
 	Blocks.Power.LASER: 5,
 	Blocks.Power.FIT: 3,

@@ -138,8 +138,8 @@ honest: it is a lesson, not a reward.
 
 > **This is the call that was later reversed.** The bomb was moved to tier 1
 > anyway, on the view that legibility beats cost ordering at the front of the
-> tree — the same exception Rewind already had. The price does the gating
-> instead: 8 charge is most of a level-1 bank.
+> tree, and then repriced from 8 to **3** so the cost ordering holds rather
+> than being excepted. It is now the joint cheapest power in the game.
 
 **Implementation.** `Progress` gains `_tutorial_power_used: bool` (persisted
 beside `seen_hints`) with `tutorial_power_pending()` and `use_tutorial_power()`.
