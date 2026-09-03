@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generate the boot splash and app icons from the title mark.
 
-The mark is the design's nine tiles laid out six across; the same layout the
-game draws at runtime in `scripts/logo_mark.gd`. These are baked images rather
+The mark is four tiles in a square with a different bottom-right one -- the
+pixel form of `ui/logo.svg` -- and the same layout the game draws at runtime in
+`ui/widgets/logo_mark.gd`. Keep the two CELLS tables in step. These are baked images rather
 than runtime draws because Godot needs a file for `boot_splash/image` and
 `config/icon`, so they are pinned to the SHIPPED palette (Themes.ACTIVE =
 PIXEL_DARK). Re-run after changing that.
@@ -12,9 +13,11 @@ Icon sizes:
     icons that carry one, even when it is fully opaque.
   * 512  -- Google Play, and the Godot project icon. 32-bit RGBA.
 
-The tile is drawn at `side // 8`, so 128px at 1024 and 64px at 512. Both are
-whole multiples of the 32px logical tile the art was authored at, which keeps
-the pixel grid exact at either size rather than resampling it.
+The tile is drawn at `side * 5 // 16`, so 320px at 1024 and 160px at 512. Both
+are whole multiples of the 32px logical tile the art was authored at, which
+keeps the pixel grid exact at either size rather than resampling it. A square
+mark needs a far bigger tile than the old 6x2 bar did to fill the same icon:
+at `side // 8` two tiles came to a quarter of the width and looked lost.
 
 Run:  python3 tools/gen_branding.py
 """
@@ -36,10 +39,9 @@ TINTS = ["#8fa9a1", "#a8842f", "#d0603a", "#e8bc61"]
 BG = "#17120f"          # Pixel Dark BG BASE
 
 # Grid position -> palette index, matching logo_mark.gd
-CELLS = [((0, 0), 0), ((1, 0), 0), ((2, 0), 3),
-         ((3, 0), 2), ((4, 0), 2), ((5, 0), 1),
-         ((0, 1), 1), ((1, 1), 1), ((2, 1), 3)]
-COLS, ROWS = 6, 2
+CELLS = [((0, 0), 3), ((1, 0), 3),
+         ((0, 1), 3), ((1, 1), 0)]
+COLS, ROWS = 2, 2
 
 
 def hx(s):
@@ -74,7 +76,7 @@ def mark(cell):
 
 def build_icon(side):
     """Square icon: the mark centred on the theme's base colour."""
-    cell = side // 8              # 128 at 1024, 64 at 512 -- both 32*n
+    cell = side * 5 // 16         # 320 at 1024, 160 at 512 -- both 32*n
     m = mark(cell)
     icon = Image.new("RGBA", (side, side), hx(BG) + (255,))
     icon.alpha_composite(m, ((side - m.width) // 2, (side - m.height) // 2))
@@ -93,14 +95,15 @@ def save(img, name, absolute=False):
 if __name__ == "__main__":
     # Boot splash: the mark centred on the theme's base colour. Godot scales
     # this to the screen, so it only needs to be crisp at its own size.
-    m = mark(32)
+    m = mark(64)
     splash = Image.new("RGBA", (m.width + 64, m.height + 64), hx(BG) + (255,))
     splash.alpha_composite(m, (32, 32))
     save(splash.resize((splash.width * 2, splash.height * 2), Image.NEAREST),
          "boot_splash.png")
 
-    # App icons. The mark is a wide 6x2 block sitting on the vertical centre,
-    # so the rounded-corner mask every platform applies cuts only background.
+    # App icons. The mark is a centred square covering about two thirds of the
+    # side, so the rounded-corner mask every platform applies cuts only
+    # background: its nearest bite is ~66px in, and the mark starts at 172.
     for side in (1024, 512):
         icon = build_icon(side)
         # The store icons live together; ui/icon.png is what project.godot

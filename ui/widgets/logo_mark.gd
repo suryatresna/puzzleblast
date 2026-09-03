@@ -1,8 +1,12 @@
 extends TextureRect
-## The title mark: the design's nine tiles laid out six across.
+## The title mark: four tiles in a square, one of them the odd one out.
 ##
-##     blue  blue  ochre  rust  rust  olive
-##     olive olive ochre
+##     ochre  ochre
+##     ochre  sage
+##
+## This is the pixel form of `ui/logo.svg`, which has always been four blocks
+## with a different bottom-right one. Sage is the only cool tint in the pixel
+## palette, so it plays the part the vector's cyan does: three alike, one not.
 ##
 ## Drawn from the live block sprite so it is tinted by whatever theme is
 ## active, rather than being a flat image that would drift from the palette.
@@ -12,11 +16,10 @@ extends TextureRect
 ## Grid position paired with a palette index. The indices are the design's
 ## four tile tints: 0 blue, 1 olive, 2 rust, 3 ochre.
 const CELLS := [
-	[Vector2i(0, 0), 0], [Vector2i(1, 0), 0], [Vector2i(2, 0), 3],
-	[Vector2i(3, 0), 2], [Vector2i(4, 0), 2], [Vector2i(5, 0), 1],
-	[Vector2i(0, 1), 1], [Vector2i(1, 1), 1], [Vector2i(2, 1), 3],
+	[Vector2i(0, 0), 3], [Vector2i(1, 0), 3],
+	[Vector2i(0, 1), 3], [Vector2i(1, 1), 0],
 ]
-const COLS := 6
+const COLS := 2
 const ROWS := 2
 ## Gap between tiles, as a fraction of a tile -- 4px on a 32px tile.
 const GAP := 0.125
