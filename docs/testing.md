@@ -165,3 +165,39 @@ Apple requires the **6.9-inch** slot (1320x2868); everything smaller is scaled
 from it automatically, and 6.5 inch (1284x2778) is only needed when 6.9 inch is
 absent. Screenshots must carry **no alpha channel**, so the harness converts to
 `FORMAT_RGB8` before saving.
+
+### The app preview video
+
+`tools/clip.tscn` renders a scripted run — three clears building a combo, then
+a laser, a blackhole and a bomb spending it — as a PNG sequence, and Movie
+Maker's WAV alongside it is the soundtrack:
+
+```bash
+"$GODOT" --path . res://tools/clip.tscn \
+    --write-movie /tmp/discard/f.png --fixed-fps 30 --disable-vsync \
+    -- 886x1920 /tmp/clip
+
+ffmpeg -y -framerate 30 -i /tmp/clip/f%05d.png -ss 0.83 -i /tmp/discard/f.wav \
+    -map 0:v -map 1:a -shortest \
+    -c:v libx264 -profile:v high -level:v 4.0 -pix_fmt yuv420p \
+    -preset veryslow -crf 10 -x264-params "deblock=-3,-3" \
+    -maxrate 12M -bufsize 24M -r 30 \
+    -c:a aac -b:a 256k -ar 48000 -ac 2 -movflags +faststart out.mp4
+```
+
+**Every iPhone preview slot is 886x1920**, whatever the screenshot size for
+that device is — 15 to 30 seconds, 30fps, H.264 High Profile 4.0.
+
+The `-ss 0.83` is not cosmetic. Recording starts after the scene has settled,
+but the WAV covers the whole run, so without the offset the audio leads the
+picture by that much for the entire clip.
+
+**Grab frames from the hold loop, not from a `frame_post_draw` handler.**
+Reading the viewport texture inside that handler makes it miss emissions: a
+first pass wrote 171 frames where Movie Maker, running alongside, wrote 582.
+
+`-tune animation` is the wrong choice here despite the name — it strengthens
+deblocking, which softens exactly the hard edges pixel art is made of.
+Disabling deblocking instead holds them. Do not chase RGB PSNR either: it
+plateaus around 38 dB no matter the bitrate, because H.264 is 4:2:0 and the
+loss is chroma. Luma comes in at 44.5 dB, and an A/B at 4x is indistinguishable.
