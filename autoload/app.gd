@@ -20,7 +20,7 @@ const FADE_DURATION := 0.22
 
 
 var game_name: String:
-	get: return ProjectSettings.get_setting("application/config/name", "Pixel Blast")
+	get: return ProjectSettings.get_setting("application/config/name", "Pix Blast")
 
 var game_version: String:
 	get: return ProjectSettings.get_setting("application/config/version", "0.0.0")

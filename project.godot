@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Pixel Blast"
+config/name="Pix Blast"
 config/description="A pixel-art block puzzle for Android and iOS."
 config/version="0.1.0"
 run/main_scene="res://scenes/splash.tscn"

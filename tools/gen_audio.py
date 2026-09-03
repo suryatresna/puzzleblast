@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate placeholder audio for Pixel Blast.
+"""Generate placeholder audio for Pix Blast.
 
 These are deliberately simple chiptune-style WAVs that suit the pixel theme
 and are meant to be REPLACED -- see assets/audio/README.md. Keeping them generated

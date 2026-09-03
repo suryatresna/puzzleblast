@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the Pixel Blast pixel-art sprites.
+"""Generate the Pix Blast pixel-art sprites.
 
 Everything here follows the tile recipe in `docs/plan/pixelart.md` /
 "Pixel Blast Theme.dc.html":

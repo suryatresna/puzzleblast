@@ -66,7 +66,7 @@ layout_mode = 2
 mouse_filter = 2
 theme_type_variation = &"TitleLabel"
 theme_override_font_sizes/font_size = 52
-text = "Pixel Blast"
+text = "Pix Blast"
 
 [node name="Blurb" type="Label" parent="SafeArea/Layout/Panel/Body"]
 layout_mode = 2

@@ -8,7 +8,7 @@ loaded into context on every turn.
 
 ## Project
 
-**Pixel Blast** — a drag-and-drop block puzzle (Block Blast / 1010!-style) built
+**Pix Blast** — a drag-and-drop block puzzle (Block Blast / 1010!-style) built
 in **Godot 4.7.2**, targeting Android and iOS in portrait. Drag cards from a
 five-slot tray onto the board; filling a row or column clears it. The run ends
 when nothing left in the tray fits anywhere.

@@ -176,4 +176,10 @@ down.
 - **The Abstraction music credit on the About page is a licence obligation.**
   Do not remove it.
 - **`user://` save paths must never change.** Changing one orphans player data.
+  On desktop the containing directory is derived from `application/config/name`
+  too (`app_userdata/<project name>/`), so **renaming the project moves every
+  save with it**. The rename to *Pix Blast* did exactly that, deliberately and
+  before launch. On iOS and Android `user://` is the app sandbox and does not
+  follow the name, so shipped devices are unaffected — but a desktop rename
+  after launch would strand local data.
 - **`ios/plugins/` cannot move.** Godot hardcodes `res://<platform>/plugins`.

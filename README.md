@@ -1,4 +1,4 @@
-# Pixel Blast
+# Pix Blast
 
 A drag-and-drop block puzzle for Android and iOS, built with **Godot 4.7.2**.
 
