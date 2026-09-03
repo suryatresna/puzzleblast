@@ -43,10 +43,46 @@ through a level-gated skill tree, four modes, a local leaderboard.
 | `/privacy.html` | Privacy policy. **Required by App Store Connect.** |
 | `/support.html` | Support / contact. **Required by App Store Connect.** |
 
-`privacy.html` can be short and should be honest: the game stores progress
-**on the device only**, has no account, no sign-in, no analytics, no ads, no
-third-party SDKs, and transmits nothing. Say that plainly rather than pasting a
-generic template that claims to collect data the app never touches.
+### The privacy policy
+
+**The app collects nothing, and that is verifiable rather than a claim.** The
+shipped privacy manifest (`ios/PrivacyInfo.xcprivacy`) declares
+`NSPrivacyTracking` **false** and carries **no `NSPrivacyCollectedDataTypes`
+key at all**, and every `privacy/collected_data/*/collected` in
+`export_presets.cfg` is `false`. There is no ad SDK, no analytics SDK and no
+crash reporter in the project.
+
+So write the short, true version. Do not paste a generic template — a policy
+claiming to collect data the app never touches is worse than none, and it must
+also **agree with the App Privacy answers in App Store Connect**, which for
+this app is "Data Not Collected" across the board. A policy that contradicts
+those answers is a rejection.
+
+The page must say, in plain language:
+
+- **No personal data is collected.** No name, email, address, phone number,
+  contacts, photos, location or identifiers.
+- **No account and no sign-in.** There is nothing to register.
+- **No analytics, no advertising, no tracking**, and no third-party SDKs that
+  could do any of it. Nothing is shared with anyone, because nothing is
+  gathered.
+- **Progress stays on the device.** Level, scores, settings and the local
+  leaderboard are written to the app's own storage and never leave it. There
+  is no server; the game works offline.
+- **Deleting the app deletes everything.** That is the whole data-retention
+  policy, and there is nothing to request or export because nothing was ever
+  sent.
+- **Children.** Nothing is collected from anyone, so nothing is collected from
+  children either — worth stating outright, since it is the question most
+  parents scan for.
+- A contact address for privacy questions, and a "last updated" date.
+
+Three things the app *does* touch, listed here only so nobody is surprised
+reading the manifest: file timestamps, system boot time and available disk
+space. These are Apple "required reason" APIs that the engine uses for saving
+and timing. They are not collection and are never transmitted, so they do not
+belong in the policy body — but do not let anyone describe them as data
+collection either.
 
 ## Sections, in order
 
@@ -144,8 +180,28 @@ them into a wide box.
 - **One `<style>` block** in the head, or one `site.css`. No CSS-in-JS.
 - **JavaScript is optional and must be removable.** The page has to work fully
   with it disabled.
-- **Responsive** from 320px up. Mobile first — most traffic will be a phone
-  that just left the App Store.
+- **Responsive from 320px up, mobile first.** Most traffic is a phone that
+  just left the App Store, so the phone layout is the design and the desktop
+  one is the adaptation — not the reverse. Specifics:
+  - Breakpoints at **480, 768 and 1100px**. Below 480 everything is one
+    column; the screenshot strip goes 1 up on phones, 2 at 768, 3 or 4 at
+    1100. Content caps at about 1100px and centres.
+  - **No horizontal scrolling at 320px**, and no element wider than its
+    container. Test at 320, 390, 768 and 1280.
+  - Screenshots are **9:19.5** and tall. On a phone show one at a time in a
+    swipeable `overflow-x: auto` strip with scroll snapping, rather than
+    shrinking six of them into thumbnails nobody can read.
+  - The video is full width on a phone, capped near **380px** on desktop —
+    a portrait video stretched across a wide screen is absurd.
+  - **Touch targets at least 44x44px** with real spacing between them, per
+    Apple's own guidance. The App Store button is the one thing on the page
+    that must never be fiddly.
+  - Use `dvh`, not `vh`, for anything full-height. Mobile Safari's toolbar
+    makes `100vh` overflow.
+  - **Do not fluid-scale the Silkscreen headings.** `clamp()` is right for
+    body copy in the system font, but Silkscreen is crisp only at multiples
+    of 8px, so headings must step 16 -> 24 -> 32 -> 48 at breakpoints. A
+    fluid pixel heading is blurry at every size in between.
 - **Dark by default**, because the game is. If you support light, define the
   full palette on `:root` and override under `prefers-color-scheme`.
 - **`image-rendering: pixelated`** on every screenshot and on the logo. Pixel
@@ -188,4 +244,7 @@ Four of these are specific to this game and will read as errors if missed.
 - Replacing any file in `assets/` needs no HTML or CSS change.
 - Lighthouse: 100 accessibility, 100 best practices, and no render-blocking
   request other than the font stylesheet.
-- The support and privacy URLs can be pasted into App Store Connect.
+- The support and privacy URLs can be pasted into App Store Connect, and the
+  privacy page agrees with the "Data Not Collected" answers there.
+- No horizontal scrollbar at 320px, and the page is usable one-handed on a
+  phone.
