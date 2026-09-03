@@ -124,3 +124,44 @@ A backgrounded window has its rendering suspended by macOS, so `get_viewport().g
 ```
 
 Frames are named `f00000000.png`. The game auto-pauses on focus loss (see `_notification` in `game.gd`), so a capture harness must force `%PausePanel.hide()` each frame.
+
+### Store screenshots
+
+`tools/shots.tscn` renders the seven marketing shots at any device resolution:
+
+```bash
+"$GODOT" --path . res://tools/shots.tscn \
+    --write-movie /tmp/discard/f.png --fixed-fps 60 --disable-vsync \
+    -- 1320x2868 res://screenshots/store/iphone-6.9-1320x2868
+```
+
+The movie output is **thrown away**. `--write-movie` is passed only because it
+is the one thing that forces a deterministic render loop; the harness saves its
+own PNGs from a SubViewport.
+
+**Do not try to get the size by resizing the window.** macOS clamps a window to
+the screen, so asking for 1320x2868 on a 1920x1080 display gives a 1320x1018
+window — and the stretch system then lays the game out **landscape**. Movie
+Maker still writes files at the size you asked for, so you get plausible-looking
+files with the HUD cut off and the board clipped. Neither `--resolution` nor
+`DisplayServer.window_set_size` avoids this; `override.cfg` changes the file
+size but not the layout.
+
+The harness instead renders into a `SubViewport` sized to the device, with
+`size_2d_override` set to the design-space equivalent and
+`size_2d_override_stretch` on. That is exactly what a device does: native
+render resolution, UI laid out in design units. The override is derived the way
+`canvas_items`/`expand` derives it — `scale = min(w/1080, h/1920)`, which for
+anything taller than 9:16 is the width, so the extra height becomes extra board
+rather than letterboxing.
+
+Two things that are invisible in an assertion and were both wrong on the first
+pass: the score is a **rolling counter**, so a shot taken too early shows a
+number that was never the score (the harness calls `reset_to()`), and a wiped
+profile has **seen no coach hints**, which puts a tutorial line under a
+veteran's board.
+
+Apple requires the **6.9-inch** slot (1320x2868); everything smaller is scaled
+from it automatically, and 6.5 inch (1284x2778) is only needed when 6.9 inch is
+absent. Screenshots must carry **no alpha channel**, so the harness converts to
+`FORMAT_RGB8` before saving.
