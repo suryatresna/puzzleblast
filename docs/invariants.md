@@ -183,6 +183,15 @@ down.
   follow the name, so shipped devices are unaffected — but a desktop rename
   after launch would strand local data.
 - **`ios/plugins/` cannot move.** Godot hardcodes `res://<platform>/plugins`.
+- **`tools/fix_ios_plist.py` must run after EVERY iOS export.** Godot writes
+  `ios/pixblast/pixblast-Info.plist` fresh each time, so editing it in Xcode
+  does not stick — the change is silently lost on the next export and the App
+  Store warnings return. It drops `UIRequiresFullScreen` (deprecated in iOS 26)
+  and the empty `NS*UsageDescription` keys, which Godot emits whether or not
+  the preset's `privacy/*_usage_description` has a value, and which validation
+  rejects as "must be a non-empty string". Nothing overrides the plist: the
+  only `INFOPLIST_KEY_*` build setting in the generated project is
+  `CFBundleDisplayName`.
 - **The project declares EVERY handheld orientation, and that is deliberate.**
   It looks wrong for a portrait game. iPadOS will not give the full screen to
   an app that supports a single orientation — it runs it in a compatibility

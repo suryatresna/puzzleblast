@@ -48,6 +48,13 @@ GODOT=/Applications/Godot.app/Contents/MacOS/Godot
 
 # Parse-check every script without running (surfaces GDScript warnings)
 "$GODOT" --headless --path . res://some_test_scene.tscn
+
+# AFTER EVERY iOS EXPORT, before archiving in Xcode. Godot rewrites
+# ios/pixblast/pixblast-Info.plist on every export, so this is not a one-off:
+# it drops UIRequiresFullScreen (deprecated in iOS 26, and what made iPadOS
+# run the game in a compatibility window) and the empty NS*UsageDescription
+# keys the App Store rejects. Idempotent.
+python3 tools/fix_ios_plist.py
 ```
 
 There is no test framework, linter, or build script. Verification is done by writing a throwaway scene + script, running it, and deleting it — see below.
