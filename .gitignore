@@ -12,7 +12,9 @@
 # settled on Pixel Blast, and matched nothing.
 /pixblast.xcodeproj/
 /pixblast/
-/pixblast.pck
+# Any name, not just the current export target: `puzzle.pck` sat tracked in
+# the root for months because this line named `pixblast` and nothing else.
+/*.pck
 /*.xcframework/
 /PrivacyInfo.xcprivacy
 
