@@ -46,8 +46,15 @@ func _ready() -> void:
 	# in design units. `scale` is how canvas_items/expand maps one to the
 	# other -- min of the two ratios, which for a screen taller than 9:16 is
 	# always the width. The extra height becomes extra board, not letterbox.
+	# Both axes, not just the height. `scale` is whichever ratio is tighter:
+	# for a phone (narrower than 9:16) that is the width, so the design stays
+	# 1080 across and gains height. For an iPad it is the HEIGHT, and the
+	# design must gain WIDTH -- 1440x1920 on a 13 inch. Pinning the width to
+	# 1080 there maps a 0.5625 canvas onto a 0.75 viewport and stretches
+	# everything 33% sideways: square blocks come out oblong, and it is subtle
+	# enough on a downscaled contact sheet to survive a look.
 	var scale: float = minf(float(_size.x) / DESIGN.x, float(_size.y) / DESIGN.y)
-	var design := Vector2i(DESIGN.x, int(round(_size.y / scale)))
+	var design := Vector2i(int(round(_size.x / scale)), int(round(_size.y / scale)))
 
 	_sv = SubViewport.new()
 	_sv.size = _size
@@ -59,8 +66,8 @@ func _ready() -> void:
 	print("target %dx%d  design %dx%d  scale %.4f" % [
 		_size.x, _size.y, design.x, design.y, scale])
 
-	for shot: String in ["menu", "powers", "blackhole", "bomb", "line-clear",
-			"skill-tree", "leaderboard"]:
+	for shot: String in ["menu", "powers", "blackhole", "bomb", "laser",
+			"line-clear", "skill-tree", "modes", "how-to-play", "leaderboard"]:
 		await _capture(shot)
 	print("DONE")
 	get_tree().quit(0)
@@ -114,9 +121,9 @@ func _seed() -> void:
 	for p: int in Blocks.ALL_POWERS:
 		if not Progress._unlocked.has(p):
 			Progress._unlocked.append(p)
-	Progress.equip(0, Blocks.Power.BOMB)
-	Progress.equip(1, Blocks.Power.BLACKHOLE)
-	Progress.equip(2, Blocks.Power.LASER)
+	Progress.equip(0, Blocks.Power.BOMB)        # _cast slot 0
+	Progress.equip(1, Blocks.Power.BLACKHOLE)   # _cast slot 1
+	Progress.equip(2, Blocks.Power.LASER)       # _cast slot 2
 	Progress._charge = Progress.max_charge()
 	Progress.use_tutorial_power()
 	# Seeding _unlocked directly bypasses unlock(), which is what spends the
@@ -126,8 +133,12 @@ func _seed() -> void:
 	# tutorial line under the tray of a veteran's board.
 	for row: Dictionary in Coach.LADDER:
 		Progress.mark_hint_seen(int(row["id"]))
-	for p: int in [Blocks.Power.BOMB, Blocks.Power.BLACKHOLE, Blocks.Power.LASER]:
-		Progress._uses[p] = Progress.USES_FOR_LEVEL[2]
+	# Laser at 3, blackhole and bomb MAXED -- matching tools/clip.gd. The store
+	# video shows the level 5 blasts, so screenshots showing the level 3 ones
+	# promise less than the video does: +40 and +60 against +120 and +250.
+	Progress._uses[Blocks.Power.LASER] = Progress.USES_FOR_LEVEL[2]
+	for p: int in [Blocks.Power.BLACKHOLE, Blocks.Power.BOMB]:
+		Progress._uses[p] = Progress.USES_FOR_LEVEL[Progress.USES_FOR_LEVEL.size() - 1]
 
 
 func _seed_scores() -> void:
@@ -165,6 +176,12 @@ func _capture(shot: String) -> void:
 		"skill-tree":
 			await _open(App.SCENE_PROFILE)
 			await _frames(40)
+		"modes":
+			await _open(App.SCENE_MODES)
+			await _frames(40)
+		"how-to-play":
+			await _open(App.SCENE_HOW_TO_PLAY)
+			await _frames(40)
 		"leaderboard":
 			_seed_scores()
 			await _open(App.SCENE_LEADERBOARD)
@@ -173,7 +190,14 @@ func _capture(shot: String) -> void:
 			Modes.set_current(Modes.Id.PALETTE)
 			var g: Control = await _open(App.SCENE_GAME)
 			var b = g._board
-			_paint(b, 0.42 if shot != "line-clear" else 0.5)
+			# A maxed blast over a sparse board destroys little and reads as a
+			# small one, so the two showpieces get a packed board.
+			var density := 0.42
+			match shot:
+				"line-clear": density = 0.5
+				"blackhole": density = 0.66
+				"bomb": density = 0.72
+			_paint(b, density)
 			b.score = 24680
 			b.best = 48120
 			b.combo = 1
@@ -186,6 +210,7 @@ func _capture(shot: String) -> void:
 			match shot:
 				"blackhole": _cast(g, 1, Vector2i(b.grid / 2, b.grid / 2)); await _frames(12)
 				"bomb":      _cast(g, 0, Vector2i(b.grid / 2, b.grid / 2 + 1)); await _frames(12)
+				"laser":     _cast(g, 2, Vector2i(b.grid / 2 + 1, b.grid / 2)); await _frames(12)
 				"line-clear": await _clear(g, b); await _frames(30)
 	await _save(shot)
 

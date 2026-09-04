@@ -36,8 +36,15 @@ func _ready() -> void:
 		_out = String(args[1])
 	DirAccess.make_dir_recursive_absolute(_out)
 
+	# Both axes, not just the height. `scale` is whichever ratio is tighter:
+	# for a phone (narrower than 9:16) that is the width, so the design stays
+	# 1080 across and gains height. For an iPad it is the HEIGHT, and the
+	# design must gain WIDTH -- 1440x1920 on a 13 inch. Pinning the width to
+	# 1080 there maps a 0.5625 canvas onto a 0.75 viewport and stretches
+	# everything 33% sideways: square blocks come out oblong, and it is subtle
+	# enough on a downscaled contact sheet to survive a look.
 	var scale: float = minf(float(_size.x) / DESIGN.x, float(_size.y) / DESIGN.y)
-	var design := Vector2i(DESIGN.x, int(round(_size.y / scale)))
+	var design := Vector2i(int(round(_size.x / scale)), int(round(_size.y / scale)))
 	_sv = SubViewport.new()
 	_sv.size = _size
 	_sv.size_2d_override = design

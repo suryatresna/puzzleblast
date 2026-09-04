@@ -197,7 +197,16 @@ ffmpeg -y -framerate 30 -i /tmp/clip/f%05d.png -ss 0.83 -i /tmp/discard/f.wav \
 ```
 
 **Every iPhone preview slot is 886x1920**, whatever the screenshot size for
-that device is — 15 to 30 seconds, 30fps, H.264 High Profile 4.0.
+that device is — 15 to 30 seconds, 30fps, H.264 High Profile 4.0. **iPad
+previews are 1200x1600**, and iPad screenshots **2064x2752**.
+
+**Derive the design canvas from BOTH axes.** `scale` is whichever ratio is
+tighter: on a phone that is the width, so the design stays 1080 across and
+gains height; on an iPad it is the *height*, and the design must gain *width*
+— 1440x1920 on a 13 inch. Pinning the width to 1080 maps a 0.5625 canvas onto
+a 0.75 viewport and stretches everything 33% sideways. That shipped once: it
+is invisible on a downscaled contact sheet, and the arithmetic
+(`x-scale 1.911` against `y-scale 1.433`) catches it where the eye does not.
 
 The `-ss` offset is not cosmetic. Recording starts after the scene has
 settled, but the WAV covers the whole run, so without it the audio leads the
