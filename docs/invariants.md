@@ -183,3 +183,12 @@ down.
   follow the name, so shipped devices are unaffected — but a desktop rename
   after launch would strand local data.
 - **`ios/plugins/` cannot move.** Godot hardcodes `res://<platform>/plugins`.
+- **The project declares EVERY handheld orientation, and that is deliberate.**
+  It looks wrong for a portrait game. iPadOS will not give the full screen to
+  an app that supports a single orientation — it runs it in a compatibility
+  window, the game centred on the display with the rest left blank, which
+  reads as "the background does not fill the screen" because what surrounds it
+  is the system, not the game. The phone is locked back to portrait at runtime
+  in `App._lock_handheld_orientation()`. **Setting
+  `display/window/handheld/orientation` back to Portrait re-breaks iPad**, and
+  the symptom looks like a layout bug rather than a manifest one.

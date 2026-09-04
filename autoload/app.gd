@@ -30,6 +30,7 @@ var _transitioning := false
 
 
 func _ready() -> void:
+	_lock_handheld_orientation()
 	Themes.theme_changed.connect(_on_theme_changed)
 	# The first scene is loaded by the engine, so set its bed here.
 	Audio.play_music.call_deferred(_playlist_for(SCENE_SPLASH))
@@ -45,6 +46,46 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fade)
 	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+## Portrait on a phone, free to rotate on a tablet.
+##
+## The project declares EVERY orientation, which looks wrong for a portrait
+## game and is deliberate: iPadOS will not give the full screen to an app that
+## supports a single orientation. It runs it in a compatibility window instead
+## -- the game centred on the display with the rest left blank, which reads as
+## "the background does not fill the screen" because what surrounds it is the
+## system, not the game.
+##
+## So the plist says the app can rotate, and a phone is locked back to portrait
+## here. A phone in landscape would leave the board marooned in the middle of a
+## very wide strip; a tablet has the room to carry it either way, and the board
+## sizes itself from its own width so it stays square at any aspect.
+func _lock_handheld_orientation() -> void:
+	if OS.get_name() != "iOS" and OS.get_name() != "Android":
+		return
+	if _is_tablet():
+		return
+	DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
+
+
+## iOS model names are stable enough to test directly ("iPad13,1"). Elsewhere,
+## fall back to the shorter screen edge in inches -- about 4.5in on the largest
+## phones, comfortably under 7in on the smallest tablets.
+func _is_tablet() -> bool:
+	match OS.get_name():
+		"iOS":
+			return OS.get_model_name().begins_with("iPad")
+		"Android":
+			var dpi := DisplayServer.screen_get_dpi()
+			if dpi <= 0:
+				return false
+			var px: Vector2i = DisplayServer.screen_get_size()
+			return minf(px.x, px.y) / float(dpi) >= 6.0
+		_:
+			# Desktop has no handheld orientation to lock, and the inch test
+			# would call a monitor a tablet.
+			return false
 
 
 ## Fade to black, swap in `path`, fade back. Calls made while a transition is
