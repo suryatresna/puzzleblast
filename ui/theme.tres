@@ -1,4 +1,4 @@
-[gd_resource type="Theme" format=3]
+[gd_resource type="Theme" format=3 uid="uid://s24v0ys0ntwt"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_denks"]
 bg_color = Color(0.608, 0.549, 1, 0.9)

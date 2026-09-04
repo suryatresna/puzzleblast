@@ -163,8 +163,19 @@ veteran's board.
 
 Apple requires the **6.9-inch** slot (1320x2868); everything smaller is scaled
 from it automatically, and 6.5 inch (1284x2778) is only needed when 6.9 inch is
-absent. Screenshots must carry **no alpha channel**, so the harness converts to
+absent. **The app is universal** (`TARGETED_DEVICE_FAMILY = "1,2"`), so the
+**13-inch iPad** slot (2064x2752) is required too — an iPad-capable app cannot
+be submitted without it, and no iPhone screenshot is ever scaled to fill it.
+Screenshots must carry **no alpha channel**, so the harness converts to
 `FORMAT_RGB8` before saving.
+
+An iPad hands the layout the same 1920 design height and **more width** —
+1440x1920 on a 13 inch, against 1080x1920 on a phone — because
+`canvas_items`/`expand` scales on the tighter axis. Nothing needs a special
+case: the board reads its cell size from its own width and stays square,
+growing from 1048 to 1113 with a cell of 92 against 87. Verify that with a
+probe rather than by eye; a downscaled iPad capture reads as though the grid
+has gone oblong when it has not.
 
 ### The app preview video
 
